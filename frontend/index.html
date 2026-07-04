@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+
+    <!-- SEO -->
+    <title>FestFind — Discover Hackathons, Workshops & College Events Across India</title>
+    <meta name="description" content="Find ongoing and upcoming hackathons, workshops, cultural fests, and technical events near you. Map-based discovery for college events across India." />
+    <meta name="keywords" content="college events, hackathons India, tech fests, workshops, seminars, upcoming events, campus events, FestFind" />
+    <meta name="theme-color" content="#00d4ff" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="FestFind — Discover Events Across India" />
+    <meta property="og:description" content="Map-based discovery for hackathons, workshops, and college events across India." />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/icon-512.png" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="FestFind — Discover Events Across India" />
+    <meta name="twitter:description" content="Map-based discovery for hackathons, workshops, and college events across India." />
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- PWA -->
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icon-192.png" />
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "FestFind",
+      "url": "/",
+      "description": "Map-based discovery for hackathons, workshops, and college events across India.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "/?search={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <script>
+      if ("serviceWorker" in navigator) {
+        if (location.hostname === "localhost" || location.hostname === "127.0.0.1") {
+          navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister()));
+        } else {
+          navigator.serviceWorker.register("/sw.js").catch(() => {});
+        }
+      }
+    </script>
+  </body>
+</html>
