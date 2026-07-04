@@ -30,6 +30,7 @@ export const adminApi = {
 
   events: (t: string, p = 1, status = "", s = "", sz = 20) =>
     req(`/events?page=${p}&page_size=${sz}&status=${status}&search=${encodeURIComponent(s)}`, t),
+  allEvents: (t: string, limit = 500) => req(`/events/all?limit=${limit}`, t),
   eventCount: (t: string, status = "") => req(`/events/count?status=${status}`, t),
   approveEvent: (t: string, id: string) => req(`/events/${id}/approve`, t, { method: "PUT" }),
   rejectEvent: (t: string, id: string) => req(`/events/${id}/reject`, t, { method: "PUT" }),

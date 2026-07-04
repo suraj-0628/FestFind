@@ -230,6 +230,28 @@ def delete_user(user_id: str, user: User = Depends(get_admin_user), db: Session 
 
 # ── Event Moderation ────────────────────────────────────────────────
 
+@router.get("/events/all")
+def admin_all_events(
+    limit: int = Query(500, ge=1, le=2000),
+    user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    events = db.query(Event).order_by(Event.created_at.desc()).limit(limit).all()
+    return [
+        {
+            "id": e.id, "title": e.title, "city": e.city, "state": e.state,
+            "latitude": e.latitude, "longitude": e.longitude,
+            "category": e.category, "organizer": e.organizer,
+            "event_type": e.event_type, "is_scraped": e.is_scraped,
+            "is_user_submitted": e.is_user_submitted, "is_approved": e.is_approved,
+            "start_date": e.start_date.isoformat() if e.start_date else None,
+            "end_date": e.end_date.isoformat() if e.end_date else None,
+            "venue": e.venue, "source_url": e.source_url,
+        }
+        for e in events
+    ]
+
+
 @router.get("/events", response_model=list[EventAdminOut])
 def admin_list_events(
     page: int = Query(1, ge=1),

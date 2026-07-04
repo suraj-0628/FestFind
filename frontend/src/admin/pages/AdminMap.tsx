@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { adminApi } from "../adminApi";
 
 export function AdminMap({ token }: { token: string }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const [events, setEvents] = useState<any[]>([]);
   const [filter, setFilter] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!mapRef.current || mapInstance.current) return;
@@ -29,12 +32,13 @@ export function AdminMap({ token }: { token: string }) {
   }, []);
 
   useEffect(() => {
-    const url = `/api/events/?page_size=500&event_type=physical`;
-    fetch(url)
-      .then((r) => r.json())
-      .then((data) => setEvents(data.items || []))
-      .catch(() => {});
-  }, []);
+    setLoading(true);
+    setError("");
+    adminApi.allEvents(token, 2000)
+      .then((data) => setEvents(data))
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [token]);
 
   useEffect(() => {
     if (!mapInstance.current) return;
@@ -72,7 +76,15 @@ export function AdminMap({ token }: { token: string }) {
   return (
     <div className="p-4 md:p-6 space-y-4 h-full flex flex-col">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h2 className="text-xl font-bold">Event Map ({events.length} events)</h2>
+        <h2 className="text-xl font-bold">
+          Event Map
+          {loading ? " (loading...)" : ` (${events.length} events)`}
+          {events.filter((e) => !e.is_approved).length > 0 && (
+            <span className="text-xs font-normal text-yellow-400 ml-2">
+              {events.filter((e) => !e.is_approved).length} pending
+            </span>
+          )}
+        </h2>
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
@@ -85,6 +97,7 @@ export function AdminMap({ token }: { token: string }) {
           <option value="no-coords">Missing Coordinates</option>
         </select>
       </div>
+      {error && <div className="text-red-400 text-sm bg-red-500/10 rounded-lg p-2">{error}</div>}
       <div ref={mapRef} className="flex-1 rounded-xl overflow-hidden min-h-[400px]" />
     </div>
   );
