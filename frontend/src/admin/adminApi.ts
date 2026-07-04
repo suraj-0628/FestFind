@@ -7,13 +7,15 @@ function authHeaders(token: string) {
 async function req(path: string, token: string, opts?: RequestInit) {
   const res = await fetch(`${API}${path}`, { ...opts, headers: authHeaders(token) });
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: res.statusText }));
+    const text = await res.text().catch(() => "");
+    const err = text ? JSON.parse(text) : { detail: res.statusText };
     throw new Error(err.detail || "Request failed");
   }
   if (res.headers.get("content-type")?.includes("text/csv")) {
     return res.blob();
   }
-  return res.json();
+  const text = await res.text();
+  return text ? JSON.parse(text) : {};
 }
 
 export const adminApi = {

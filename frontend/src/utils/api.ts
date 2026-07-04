@@ -129,7 +129,8 @@ export async function authRegister(name: string, email: string, password: string
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, email, password }),
   });
-  const data = await res.json();
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : {};
   if (!res.ok) throw new Error(data.detail || "Registration failed");
   return data;
 }
@@ -140,7 +141,8 @@ export async function authLogin(email: string, password: string): Promise<{ toke
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
-  const data = await res.json();
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : {};
   if (!res.ok) throw new Error(data.detail || "Login failed");
   return data;
 }
@@ -150,5 +152,7 @@ export async function authMe(token: string): Promise<{ id: string; email: string
     headers: { Authorization: `Bearer ${token}` },
   });
   if (!res.ok) throw new Error("Not authenticated");
-  return res.json();
+  const text = await res.text();
+  if (!text) throw new Error("Empty response from server");
+  return JSON.parse(text);
 }
