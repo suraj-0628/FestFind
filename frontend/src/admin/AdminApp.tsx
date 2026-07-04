@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useMediaQuery } from "../hooks/useMediaQuery";
+import { authLogin } from "../utils/api";
 import { adminApi } from "./adminApi";
 import { AdminOverview } from "./pages/Overview";
 import { AdminScraper } from "./pages/Scraper";
@@ -25,10 +26,14 @@ const NAV = [
 ];
 
 export function AdminApp() {
-  const { user, token, logout, loading } = useAuth();
+  const { user, token, logout, loading, login } = useAuth();
   const [page, setPage] = useState<Page>("overview");
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPass, setLoginPass] = useState("");
+  const [loginError, setLoginError] = useState("");
+  const [loginLoading, setLoginLoading] = useState(false);
 
   if (loading) {
     return (
@@ -38,13 +43,65 @@ export function AdminApp() {
     );
   }
 
-  if (!user || !(user as any).is_admin) {
+  if (!user) {
+    const handleLogin = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setLoginError("");
+      setLoginLoading(true);
+      try {
+        await login(loginEmail, loginPass);
+      } catch (err: any) {
+        setLoginError(err.message || "Login failed");
+      }
+      setLoginLoading(false);
+    };
+
+    return (
+      <div className="h-[100dvh] flex items-center justify-center bg-[#0a0a0f] text-white">
+        <form onSubmit={handleLogin} className="w-full max-w-sm space-y-4 p-6">
+          <div className="text-center mb-6">
+            <h1 className="text-xl font-bold"><span className="text-neon-blue">Fest</span>Find Admin</h1>
+          </div>
+          {loginError && <div className="text-red-400 text-xs text-center bg-red-500/10 rounded-lg p-2">{loginError}</div>}
+          <input
+            type="email"
+            placeholder="Email"
+            value={loginEmail}
+            onChange={(e) => setLoginEmail(e.target.value)}
+            required
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500"
+          />
+          <input
+            type="password"
+            placeholder="Password"
+            value={loginPass}
+            onChange={(e) => setLoginPass(e.target.value)}
+            required
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2.5 text-sm text-white placeholder-slate-500"
+          />
+          <button
+            type="submit"
+            disabled={loginLoading}
+            className="w-full py-2.5 bg-neon-blue text-black font-semibold rounded-lg text-sm disabled:opacity-50"
+          >
+            {loginLoading ? "Logging in..." : "Login"}
+          </button>
+          <div className="text-center">
+            <a href="/" className="text-xs text-slate-500 hover:text-white">Back to FestFind</a>
+          </div>
+        </form>
+      </div>
+    );
+  }
+
+  if (!(user as any).is_admin) {
     return (
       <div className="h-[100dvh] flex items-center justify-center bg-[#0a0a0f] text-white">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
-          <p className="text-slate-400 mb-4">Admin access required</p>
-          <a href="/" className="text-neon-blue hover:underline">Go back to FestFind</a>
+          <p className="text-slate-400 mb-4">Admin access required for {user.email}</p>
+          <button onClick={logout} className="text-neon-blue hover:underline text-sm mr-4">Login as different user</button>
+          <a href="/" className="text-slate-500 hover:text-white text-sm">Go back to FestFind</a>
         </div>
       </div>
     );
