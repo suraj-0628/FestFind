@@ -81,15 +81,18 @@ async def run_scrape_job():
             # Dedup sets
             existing_urls = set()
             for (url,) in db.query(Event.source_url).filter(Event.source_url != None).all():
-                existing_urls.add(url)
+                if url:
+                    existing_urls.add(url.replace("https://www.", "https://"))
 
             for evt in all_events:
                 source_url = evt.get("source_url", "")
                 if not source_url:
                     continue
 
+                normalized_url = source_url.replace("https://www.", "https://")
+
                 # Skip if already in DB
-                if source_url in existing_urls:
+                if normalized_url in existing_urls:
                     skip_count += 1
                     continue
 
@@ -177,7 +180,7 @@ async def run_scrape_job():
                     is_approved=True,
                 )
                 db.add(event)
-                existing_urls.add(source_url)
+                existing_urls.add(normalized_url)
                 new_count += 1
                 logger.info("Added: %s (%s)", title[:50], city)
 
