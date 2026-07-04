@@ -132,7 +132,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     token = create_token(user.id)
     return AuthResponse(
         token=token,
-        user={"id": user.id, "email": user.email, "name": user.name},
+        user={"id": user.id, "email": user.email, "name": user.name, "is_admin": user.is_admin},
     )
 
 
@@ -145,10 +145,18 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
     token = create_token(user.id)
     return AuthResponse(
         token=token,
-        user={"id": user.id, "email": user.email, "name": user.name},
+        user={"id": user.id, "email": user.email, "name": user.name, "is_admin": user.is_admin},
     )
 
 
 @router.get("/me", response_model=dict)
 def get_me(user: User = Depends(get_current_user)):
-    return {"id": user.id, "email": user.email, "name": user.name}
+    return {"id": user.id, "email": user.email, "name": user.name, "is_admin": user.is_admin}
+
+
+def get_admin_user(user: User = Depends(get_current_user)) -> User:
+    if not user.is_admin:
+        raise HTTPException(403, "Admin access required")
+    if not user.is_active:
+        raise HTTPException(403, "Account is deactivated")
+    return user

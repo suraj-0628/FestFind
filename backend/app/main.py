@@ -8,6 +8,7 @@ from app.database import engine, Base
 from app.routers import events
 from app.routers import upload
 from app.routers import auth
+from app.routers import admin
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,3 +41,4 @@ app.add_middleware(
 app.include_router(events.router, prefix="/api/events", tags=["events"])
 app.include_router(upload.router, prefix="/api/upload", tags=["upload"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
