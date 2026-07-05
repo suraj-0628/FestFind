@@ -14,12 +14,14 @@
     <meta property="og:title" content="FestFind — Discover Events Across India" />
     <meta property="og:description" content="Map-based discovery for hackathons, workshops, and college events across India." />
     <meta property="og:type" content="website" />
-    <meta property="og:image" content="/icon-512.png" />
+    <meta property="og:url" content="https://festfind.dev" />
+    <meta property="og:image" content="https://festfind.dev/icon-512.png" />
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="FestFind — Discover Events Across India" />
     <meta name="twitter:description" content="Map-based discovery for hackathons, workshops, and college events across India." />
+    <meta name="twitter:image" content="https://festfind.dev/icon-512.png" />
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -38,18 +40,25 @@
       "@context": "https://schema.org",
       "@type": "WebSite",
       "name": "FestFind",
-      "url": "/",
+      "url": "https://festfind.dev",
       "description": "Map-based discovery for hackathons, workshops, and college events across India.",
       "potentialAction": {
         "@type": "SearchAction",
-        "target": "/?search={search_term_string}",
+        "target": "https://festfind.dev/?search={search_term_string}",
         "query-input": "required name=search_term_string"
       }
     }
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <noscript style="display:flex;align-items:center;justify-content:center;height:100vh;color:#e2e8f0;font-family:Inter,system-ui,sans-serif;text-align:center;padding:2rem">
+        <div>
+          <h1 style="font-size:1.5rem;margin-bottom:0.5rem">FestFind</h1>
+          <p>Enable JavaScript to discover college events across India.</p>
+        </div>
+      </noscript>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
       if ("serviceWorker" in navigator) {

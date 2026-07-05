@@ -25,9 +25,8 @@ export function useEvents(filters?: {
           setTotal(data.total);
         }
       })
-      .catch((err) => {
+      .catch(() => {
         if (!cancelled) {
-          console.error(err);
           setError("Failed to load events. Please try again.");
         }
       })

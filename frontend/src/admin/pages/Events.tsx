@@ -109,8 +109,15 @@ export function AdminEvents({ token }: { token: string }) {
                       <input type="checkbox" checked={selected.has(e.id)} onChange={() => toggleSelect(e.id)} className="rounded" />
                     </td>
                     <td className="p-3">
-                      <div className="max-w-[200px] md:max-w-[300px] truncate font-medium">{e.title}</div>
-                      {e.organizer && <div className="text-xs text-slate-500 truncate">{e.organizer}</div>}
+                      <div className="flex items-center gap-3">
+                        {e.image_url && (
+                          <img src={e.image_url} alt="" className="w-10 h-10 rounded object-cover shrink-0 border border-white/[0.08]" onError={(ev) => { (ev.target as HTMLImageElement).style.display = "none"; }} />
+                        )}
+                        <div className="min-w-0">
+                          <div className="max-w-[200px] md:max-w-[300px] truncate font-medium">{e.title}</div>
+                          {e.organizer && <div className="text-xs text-slate-500 truncate">{e.organizer}</div>}
+                        </div>
+                      </div>
                     </td>
                     <td className="p-3 text-slate-400 hidden md:table-cell">{e.city || "-"}</td>
                     <td className="p-3 text-slate-400 hidden md:table-cell">{e.category || "-"}</td>

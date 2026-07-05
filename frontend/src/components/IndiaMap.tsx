@@ -24,7 +24,7 @@ function statusGlow(status: string): string {
 function stateIcon(count: number): L.DivIcon {
   return L.divIcon({
     className: "",
-    html: `<div style="width:48px;height:48px;border-radius:50%;background:rgba(0,212,255,0.9);border:3px solid rgba(10,10,15,0.9);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;box-shadow:0 0 20px rgba(0,212,255,0.6),0 0 40px rgba(0,212,255,0.3);cursor:pointer;transition:transform .2s,box-shadow .2s" onmouseenter="this.style.transform='scale(1.15)';this.style.boxShadow='0 0 28px rgba(0,212,255,0.8),0 0 56px rgba(0,212,255,0.4)'" onmouseleave="this.style.transform='scale(1)';this.style.boxShadow='0 0 20px rgba(0,212,255,0.6),0 0 40px rgba(0,212,255,0.3)'">${count}</div>`,
+    html: `<div style="width:48px;height:48px;border-radius:50%;background:rgba(0,212,255,0.9);border:3px solid rgba(10,10,15,0.9);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#fff;box-shadow:0 0 20px rgba(0,212,255,0.6),0 0 40px rgba(0,212,255,0.3);cursor:pointer;transition:transform .2s,box-shadow .2s" onmouseenter="this.style.transform='scale(1.15)'" onmouseleave="this.style.transform='scale(1)'">${count}</div>`,
     iconSize: [48, 48],
     iconAnchor: [24, 24],
   });
@@ -89,6 +89,12 @@ function labelIcon(name: string): L.DivIcon {
   });
 }
 
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
+
+const SAFE_URL_RE = /^https?:\/\//i;
+
 function eventPopup(e: EventData, status: string): string {
   const c = statusColor(status);
   const d = e.start_date
@@ -98,39 +104,40 @@ function eventPopup(e: EventData, status: string): string {
     ? new Date(e.end_date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
     : "";
   const dateRange = end && end !== d ? `${d} — ${end}` : d;
+  const safeUrl = e.event_url && SAFE_URL_RE.test(e.event_url) ? e.event_url : "";
 
   return `<div style="min-width:240px;max-width:280px;font-family:Inter,system-ui,sans-serif">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
       <div style="width:10px;height:10px;border-radius:50%;background:${c};box-shadow:0 0 8px ${c};flex-shrink:0"></div>
       <span style="font-size:10px;font-weight:700;color:${c};text-transform:uppercase;letter-spacing:0.5px">${status}</span>
     </div>
-    <h3 style="margin:0 0 8px;font-size:15px;font-weight:700;color:#f1f5f9;line-height:1.3">${e.title}</h3>
+    <h3 style="margin:0 0 8px;font-size:15px;font-weight:700;color:#f1f5f9;line-height:1.3">${escapeHtml(e.title)}</h3>
     <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
       <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg> ${dateRange}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg> ${escapeHtml(dateRange)}
       </div>
       ${e.venue ? `<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/></svg> ${e.venue}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/></svg> ${escapeHtml(e.venue)}
       </div>` : ""}
       ${e.city ? `<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> ${e.city}${e.state ? ", " + e.state : ""}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> ${escapeHtml(e.city)}${e.state ? ", " + escapeHtml(e.state) : ""}
       </div>` : ""}
       ${e.organizer ? `<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> ${e.organizer.length > 40 ? e.organizer.slice(0, 40) + "..." : e.organizer}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> ${escapeHtml(e.organizer.length > 40 ? e.organizer.slice(0, 40) + "..." : e.organizer)}
       </div>` : ""}
     </div>
     ${e.category ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">
-      ${e.category.split(",").slice(0, 3).map((c) => `<span style="display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600;background:rgba(0,212,255,0.2);color:#67e8f9">${c.trim()}</span>`).join("")}
+      ${e.category.split(",").slice(0, 3).map((c) => `<span style="display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:600;background:rgba(0,212,255,0.2);color:#67e8f9">${escapeHtml(c.trim())}</span>`).join("")}
     </div>` : ""}
     <div style="display:flex;gap:6px;margin-top:8px">
-      ${e.event_url ? `<a href="${e.event_url}" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600;color:#0a0a0f;background:linear-gradient(135deg,#00d4ff,#00d4ff);text-decoration:none;transition:opacity .2s" onmouseenter="this.style.opacity='0.9'" onmouseleave="this.style.opacity='1'">Register Now →</a>` : ""}
+      ${safeUrl ? `<a href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener" style="flex:1;text-align:center;padding:6px 12px;border-radius:8px;font-size:11px;font-weight:600;color:#0a0a0f;background:linear-gradient(135deg,#00d4ff,#00d4ff);text-decoration:none;transition:opacity .2s" onmouseenter="this.style.opacity='0.9'" onmouseleave="this.style.opacity='1'">Register Now →</a>` : ""}
     </div>
   </div>`;
 }
 
 function statePopup(name: string, ongoing: number, upcoming: number): string {
   return `<div style="text-align:center;min-width:140px;font-family:Inter,system-ui,sans-serif">
-    <div style="font-size:15px;font-weight:700;color:#67e8f9;margin-bottom:8px">${name}</div>
+    <div style="font-size:15px;font-weight:700;color:#67e8f9;margin-bottom:8px">${escapeHtml(name)}</div>
     <div style="display:flex;justify-content:center;gap:12px;margin-bottom:6px">
       ${ongoing > 0 ? `<div style="text-align:center"><div style="font-size:18px;font-weight:700;color:#22c55e">${ongoing}</div><div style="font-size:10px;color:#64748b">Ongoing</div></div>` : ""}
       ${upcoming > 0 ? `<div style="text-align:center"><div style="font-size:18px;font-weight:700;color:#f472b6">${upcoming}</div><div style="font-size:10px;color:#64748b">Upcoming</div></div>` : ""}
@@ -271,6 +278,15 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
       mk.on("click", () => goStateRef.current(state));
       const lb = L.marker([state.lat, state.lng + 1.2], { icon: labelIcon(state.name) }).addTo(layer);
       lb.on("click", () => goStateRef.current(state));
+    }
+
+    // International events — pin at their lat/lng
+    const intlEvents = evtsRef.current.filter((e) => e.latitude != null && e.longitude != null && (!e.state || e.state === "NA"));
+    for (const e of intlEvents) {
+      const st = getEventStatus(e);
+      const mk = L.marker([e.latitude!, e.longitude!], { icon: glowingMarker(st) }).addTo(layer);
+      mk.bindPopup(eventPopup(e, st), { maxWidth: 280 });
+      mk.on("click", () => onSelectRef.current(e));
     }
 
     if (userLocRef.current) {
@@ -468,10 +484,11 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
       zoom: 5,
       zoomControl: window.innerWidth >= 768,
       attributionControl: false,
-      minZoom: 4,
+      minZoom: 3,
       maxZoom: 16,
-      maxBounds: [[-15, 55], [45, 105]],
-      maxBoundsViscosity: 0.8,
+      maxBounds: [[-85, -180], [85, 180]],
+      maxBoundsViscosity: 1.0,
+      worldCopyJump: false,
       scrollWheelZoom: true,
       touchZoom: true,
       bounceAtZoomLimits: true,

@@ -13,8 +13,13 @@ interface Props {
 
 export function MobileEventList({ events, loading, search, onSearchChange, onSelectEvent, selectedId }: Props) {
   const stats = useMemo(() => {
-    const ongoing = events.filter((e) => getEventStatus(e) === "ongoing");
-    const upcoming = events.filter((e) => getEventStatus(e) === "upcoming");
+    const sortByDate = (a: EventData, b: EventData) => {
+      const da = a.start_date ? new Date(a.start_date).getTime() : Infinity;
+      const db = b.start_date ? new Date(b.start_date).getTime() : Infinity;
+      return da - db;
+    };
+    const ongoing = events.filter((e) => getEventStatus(e) === "ongoing").sort(sortByDate);
+    const upcoming = events.filter((e) => getEventStatus(e) === "upcoming").sort(sortByDate);
     return { total: events.length, ongoing, upcoming };
   }, [events]);
 

@@ -53,6 +53,57 @@ def discover_states() -> list[dict]:
     return unique
 
 
+def discover_events_from_upcoming(url: str) -> list[dict]:
+    """Parse the upcomingfests page (5 columns: start, title, category, venue+city, end)."""
+    html = _get(url)
+    if not html:
+        return []
+    time.sleep(RATE_LIMIT)
+
+    soup = BeautifulSoup(html, "lxml")
+    events = []
+
+    for tr in soup.select("tr[onclick]"):
+        onclick = tr.get("onclick", "")
+        match = re.search(r"window\.open\('([^']+)'", onclick)
+        if not match:
+            continue
+        href = match.group(1)
+        if not href.startswith("http"):
+            href = BASE + "/" + href.lstrip("./")
+
+        tds = tr.select("td")
+        if len(tds) < 4:
+            continue
+
+        start_str = tds[0].get_text(strip=True) if tds else ""
+        title = tds[1].get_text(strip=True) if len(tds) > 1 else ""
+        title = re.sub(r"View More$", "", title).strip()
+
+        category = tds[2].get_text(strip=True) if len(tds) > 2 else ""
+        venue_raw = tds[3].get_text(strip=True) if len(tds) > 3 else ""
+        end_str = tds[4].get_text(strip=True) if len(tds) > 4 else ""
+
+        # Parse venue: "Name,City,\n\t\t\t\t\t\tNA" or "Name,City"
+        parts = [p.strip() for p in venue_raw.split(",") if p.strip() and p.strip() != "NA"]
+        venue = parts[0] if parts else ""
+        city = parts[1] if len(parts) > 1 else ""
+
+        events.append({
+            "title": title,
+            "source_url": href,
+            "start_str": start_str,
+            "end_str": end_str,
+            "category": category,
+            "venue": venue,
+            "city": city,
+            "state": "",
+        })
+
+    logger.info("Upcomingfests: found %d events", len(events))
+    return events
+
+
 def discover_events_from_state(state_url: str, state_name: str) -> list[dict]:
     """Parse a state page and return event row data."""
     html = _get(state_url)

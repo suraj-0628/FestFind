@@ -63,9 +63,11 @@ function AppContent() {
 
   const { events, loading, error } = useEvents(eventFilters);
 
+  const domesticEvents = useMemo(() => events.filter((e) => e.state && e.state !== "NA"), [events]);
+
   const nearbyEvents = useMemo(() => {
     if (!loc.lat || !loc.lng || loc.status !== "ready") return [];
-    return events
+    return domesticEvents
       .filter((e) => e.latitude != null && e.longitude != null)
       .map((e) => ({
         event: e,
@@ -75,7 +77,7 @@ function AppContent() {
       .sort((a, b) => a.dist - b.dist)
       .slice(0, 10)
       .map((x) => x.event);
-  }, [events, loc.lat, loc.lng, loc.status]);
+  }, [domesticEvents, loc.lat, loc.lng, loc.status]);
 
   const userLocObj = useMemo(() => {
     if (loc.status !== "ready" || !loc.lat) return null;
@@ -180,7 +182,7 @@ function AppContent() {
                 </div>
               ) : (
                 <EventSidebar
-                  events={events}
+                  events={domesticEvents}
                   loading={loading}
                   search={search}
                   onSearchChange={setSearch}
@@ -298,7 +300,7 @@ function AppContent() {
                 </div>
               ) : (
                 <MobileEventList
-                  events={events}
+                  events={domesticEvents}
                   loading={loading}
                   search={search}
                   onSearchChange={setSearch}

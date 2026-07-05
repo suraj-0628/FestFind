@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 import os
 import re
 from datetime import datetime, timedelta, timezone
@@ -43,7 +44,8 @@ def _hash_password(password: str, salt: str | None = None) -> str:
 
 def _verify_password(password: str, stored_hash: str) -> bool:
     salt, _ = stored_hash.split("$", 1)
-    return _hash_password(password, salt) == stored_hash
+    computed = _hash_password(password, salt)
+    return hmac.compare_digest(computed, stored_hash)
 
 
 def _is_valid_email(email: str) -> tuple[bool, str]:

@@ -2,14 +2,14 @@ import uuid
 import re
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Event, User
 from app.schemas import EventCreate, EventList, EventOut
-from app.scraper.scheduler import get_scrape_status, run_scrape_job
+from app.scraper.scheduler import get_scrape_status
 from app.routers.auth import get_current_user
 
 router = APIRouter()
@@ -103,7 +103,7 @@ def create_event(event: EventCreate, user: User = Depends(get_current_user), db:
         source_url=f"submit:{uuid.uuid4()}",
         is_scraped=False,
         is_user_submitted=True,
-        is_approved=True,
+        is_approved=False,
     )
     db.add(db_event)
     db.commit()
@@ -120,17 +120,61 @@ def api_reverse_geocode(lat: float, lng: float):
     return result
 
 
+@router.get("/geocode")
+def api_geocode(q: str):
+    """Forward geocode a location string (city, venue, etc.) via Nominatim."""
+    import urllib.parse
+    import json
+    import urllib.request
+    try:
+        url = f"https://nominatim.openstreetmap.org/search?q={urllib.parse.quote(q)}&format=json&limit=1"
+        req = urllib.request.Request(url, headers={"User-Agent": "FestFind/1.0"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read())
+            if data:
+                return {"lat": float(data[0]["lat"]), "lng": float(data[0]["lon"]), "display": data[0].get("display_name", q)}
+    except Exception:
+        pass
+    return {"lat": None, "lng": None, "display": ""}
+
+
+@router.get("/resolve-link")
+def api_resolve_link(url: str):
+    """Resolve a Google Maps short link to exact coordinates using headless browser."""
+    import subprocess
+    import json
+    import re
+    import os
+
+    script = os.path.join(os.path.dirname(__file__), "..", "scraper", "resolve_maps.mjs")
+    try:
+        result = subprocess.run(
+            ["node", script, url],
+            capture_output=True, text=True, timeout=30,
+        )
+        data = json.loads(result.stdout.strip())
+        final_url = data.get("url", url)
+        # Extract @lat,lng from the resolved URL
+        m = re.search(r"@(-?\d+\.?\d+),(-?\d+\.?\d+)", final_url)
+        if m:
+            return {"url": final_url, "lat": float(m.group(1)), "lng": float(m.group(2))}
+        # Fallback: !3d!4d pattern
+        m = re.search(r"!3d(-?\d+\.?\d+)!4d(-?\d+\.?\d+)", final_url)
+        if m:
+            return {"url": final_url, "lat": float(m.group(1)), "lng": float(m.group(2))}
+        return {"url": final_url, "lat": None, "lng": None}
+    except Exception:
+        return {"url": url, "lat": None, "lng": None}
+
+
 @router.get("/scrape/status")
 def scrape_status():
     return get_scrape_status()
 
 
-@router.post("/scrape/run")
-async def trigger_scrape(background_tasks: BackgroundTasks):
-    background_tasks.add_task(run_scrape_job)
-    return {"message": "Scrape job started in background"}
-
-
 @router.get("/{event_id}", response_model=EventOut)
 def get_event(event_id: str, db: Session = Depends(get_db)):
-    return db.query(Event).filter(Event.id == event_id).first()
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(404, "Event not found")
+    return event

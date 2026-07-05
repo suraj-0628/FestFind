@@ -17,7 +17,13 @@ export function EventSidebar({ events, loading, search, onSearchChange, onSelect
   const [upcomingExpanded, setUpcomingExpanded] = useState(false);
   const stats = useMemo(() => {
     const ongoing = events.filter((e) => getEventStatus(e) === "ongoing");
-    const upcoming = events.filter((e) => getEventStatus(e) === "upcoming");
+    const upcoming = events
+      .filter((e) => getEventStatus(e) === "upcoming")
+      .sort((a, b) => {
+        const da = a.start_date ? new Date(a.start_date).getTime() : Infinity;
+        const db = b.start_date ? new Date(b.start_date).getTime() : Infinity;
+        return da - db;
+      });
     const physical = events.filter((e) => e.event_type === "physical");
     return { total: events.length, ongoing, upcoming, physical };
   }, [events]);
@@ -25,9 +31,12 @@ export function EventSidebar({ events, loading, search, onSearchChange, onSelect
   const byState = useMemo(() => {
     const map = new Map<string, EventData[]>();
     for (const e of events) {
-      if (!e.state) continue;
-      if (!map.has(e.state)) map.set(e.state, []);
-      map.get(e.state)!.push(e);
+      // Group Indian events by state, international events by city
+      const isIntl = !e.state || e.state === "NA";
+      const key = isIntl ? (e.city || "International") : e.state;
+      if (!key) continue;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(e);
     }
     return Array.from(map.entries()).sort((a, b) => b[1].length - a[1].length);
   }, [events]);
@@ -77,7 +86,13 @@ export function EventSidebar({ events, loading, search, onSearchChange, onSelect
         {/* Nearby You */}
         {nearbyEvents && nearbyEvents.length > 0 && (
           <Section title="Nearby You" icon="pin" iconColor="text-green-400">
-            {nearbyEvents.map((e) => (
+            {[...nearbyEvents]
+              .sort((a, b) => {
+                const da = a.start_date ? new Date(a.start_date).getTime() : Infinity;
+                const db = b.start_date ? new Date(b.start_date).getTime() : Infinity;
+                return da - db;
+              })
+              .map((e) => (
               <EventRow key={e.id} event={e} selected={e.id === selectedId} onClick={() => onSelectEvent(e)} />
             ))}
           </Section>
@@ -109,12 +124,15 @@ export function EventSidebar({ events, loading, search, onSearchChange, onSelect
           </Section>
         )}
 
-        {/* Explore by State */}
+        {/* Explore by State / Location */}
         {topStates.length > 0 && (
-          <Section title="Explore by State" icon="pin" iconColor="text-neon-emerald">
+          <Section title="Explore by Location" icon="pin" iconColor="text-neon-emerald">
             <div className="space-y-1">
               {topStates.map(([state, evts]) => {
-                const coord = stateCoordMap.get(state);
+                const coord = stateCoordMap.get(state) || (() => {
+                  const e = evts.find((ev) => ev.latitude != null && ev.longitude != null);
+                  return e ? { lat: e.latitude!, lng: e.longitude! } : null;
+                })();
                 const ongoing = evts.filter((e) => getEventStatus(e) === "ongoing").length;
                 const upcoming = evts.filter((e) => getEventStatus(e) === "upcoming").length;
                 return (

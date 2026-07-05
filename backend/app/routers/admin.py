@@ -68,6 +68,7 @@ class EventAdminOut(BaseModel):
     description: str | None = None
     event_url: str | None = None
     source_url: str | None = None
+    image_url: str | None = None
     start_date: datetime | None = None
     end_date: datetime | None = None
     venue: str | None = None

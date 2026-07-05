@@ -123,6 +123,12 @@ export async function reverseGeocode(lat: number, lng: number): Promise<{ venue:
   return res.json();
 }
 
+export async function forwardGeocode(q: string): Promise<{ lat: number | null; lng: number | null; display: string }> {
+  const res = await fetch(`${API_BASE}/geocode?q=${encodeURIComponent(q)}`);
+  if (!res.ok) throw new Error("Geocode failed");
+  return res.json();
+}
+
 export async function authRegister(name: string, email: string, password: string): Promise<{ token: string; user: { id: string; email: string; name: string; is_admin?: boolean } }> {
   const res = await fetch(`${AUTH_BASE}/register`, {
     method: "POST",

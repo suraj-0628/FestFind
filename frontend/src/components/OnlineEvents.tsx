@@ -12,7 +12,7 @@ export function OnlineEvents() {
     setLoading(true);
     fetchEvents({ event_type: "online", page_size: 50 })
       .then((data) => setEvents(data.items))
-      .catch(console.error)
+      .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 

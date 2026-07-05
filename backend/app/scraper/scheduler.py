@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from app.scraper.knowafest_scraper import (
     discover_states,
     discover_events_from_state,
+    discover_events_from_upcoming,
     scrape_event_detail,
     _parse_date,
 )
@@ -57,8 +58,16 @@ async def run_scrape_job():
                     seen_urls.add(url)
                     all_events.append(e)
 
+        # Step 2b: Also scrape upcomingfests page
+        upcoming_events = discover_events_from_upcoming("https://www.knowafest.com/explore/upcomingfests")
+        for e in upcoming_events:
+            url = e.get("source_url", "")
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                all_events.append(e)
+
         _scrape_status["events_found"] = len(all_events)
-        logger.info("Discovered %d unique events across %d states", len(all_events), len(states))
+        logger.info("Discovered %d unique events across %d states + upcomingfests", len(all_events), len(states))
 
         # Step 3: For each event, visit detail page and store in DB
         db = SessionLocal()
@@ -112,7 +121,7 @@ async def run_scrape_job():
 
                 description = (detail or {}).get("description", "")
                 start_date = (detail or {}).get("start_date") or _parse_date(evt.get("start_str"))
-                end_date = (detail or {}).get("end_date")
+                end_date = (detail or {}).get("end_date") or _parse_date(evt.get("end_str"))
                 venue = (detail or {}).get("venue") or evt.get("venue", "")
                 city = (detail or {}).get("city") or evt.get("city", "")
                 state_name = (detail or {}).get("state") or evt.get("state", "")
@@ -129,15 +138,33 @@ async def run_scrape_job():
                     continue
 
                 # Geocode if missing
-                if not latitude and city and city.lower() not in (
-                    "tokyo", "new york", "san diego", "los angeles", "singapore",
-                    "osaka", "paris", "rome", "barcelona", "vienna", "dubai", "bangkok", "boston",
-                ):
-                    try:
-                        from app.scraper.geocoder import geocode_venue
-                        latitude, longitude = geocode_venue(venue, city, state_name)
-                    except Exception:
-                        pass
+                if not latitude and city:
+                    _intl_coords = {
+                        "tokyo": (35.6762, 139.6503), "new york": (40.7128, -74.0060),
+                        "san diego": (32.7157, -117.1611), "los angeles": (34.0522, -118.2437),
+                        "singapore": (1.3521, 103.8198), "osaka": (34.6937, 135.5023),
+                        "paris": (48.8566, 2.3522), "rome": (41.9028, 12.4964),
+                        "barcelona": (41.3874, 2.1686), "vienna": (48.2082, 16.3738),
+                        "dubai": (25.2048, 55.2708), "bangkok": (13.7563, 100.5018),
+                        "boston": (42.3601, -71.0589), "khet huai khwang": (13.7759, 100.5757),
+                        "naritha": (13.7759, 100.5757), "karaikudi": (10.0732, 78.7671),
+                        "thrissur": (10.5276, 76.2144), "chennai": (13.0827, 80.2707),
+                        "coimbatore": (11.0168, 76.9558), "erode": (11.3410, 77.7172),
+                        "hyderabad": (17.3850, 78.4867), "bengaluru": (12.9716, 77.5946),
+                        "tiruchirappalli": (10.7905, 78.7047), "pondicherry": (11.9416, 79.8083),
+                        "ahmedabad": (23.0225, 72.5714), "nashik": (19.9975, 73.7898),
+                        "kopargaon": (19.7500, 74.4700), "khurda": (20.1822, 85.6180),
+                        "mayiladuthurai": (11.1035, 79.6540), "singnapur": (19.7500, 74.4700),
+                    }
+                    city_key = city.lower().strip()
+                    if city_key in _intl_coords:
+                        latitude, longitude = _intl_coords[city_key]
+                    else:
+                        try:
+                            from app.scraper.geocoder import geocode_venue
+                            latitude, longitude = geocode_venue(venue, city, state_name)
+                        except Exception:
+                            pass
 
                 # Auto-categorize
                 if not category:
@@ -159,6 +186,13 @@ async def run_scrape_job():
                     elif any(w in t for w in ["tech", "technical"]):
                         category = "Technical"
 
+                # Auto-detect event_type
+                _online_kw = ["online", "virtual", "webinar", "remote", "hybrid", "e-summit", "e-summit"]
+                title_lower = (title or "").lower()
+                venue_lower = (venue or "").lower()
+                category_lower = (category or "").lower()
+                is_online = any(kw in title_lower or kw in venue_lower or kw in category_lower for kw in _online_kw)
+
                 event = Event(
                     title=title,
                     description=description or None,
@@ -169,12 +203,12 @@ async def run_scrape_job():
                     venue=venue or None,
                     city=city or None,
                     state=state_name or None,
-                    latitude=latitude,
-                    longitude=longitude,
+                    latitude=latitude if not is_online else None,
+                    longitude=longitude if not is_online else None,
                     category=category or None,
                     organizer=organizer[:500] if organizer else None,
                     image_url=image_url[:1000] if image_url else None,
-                    event_type="physical",
+                    event_type="online" if is_online else "physical",
                     is_scraped=True,
                     is_user_submitted=False,
                     is_approved=True,

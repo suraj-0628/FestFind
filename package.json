@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "@dietrichgebert/ponytail": "^4.8.4"
+  },
+  "dependencies": {
+    "playwright": "^1.61.1"
+  }
+}
