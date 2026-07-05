@@ -30,6 +30,8 @@ export const adminApi = {
   toggleAdmin: (t: string, id: string) => req(`/users/${id}/admin`, t, { method: "PUT" }),
   toggleActive: (t: string, id: string) => req(`/users/${id}/active`, t, { method: "PUT" }),
   deleteUser: (t: string, id: string) => req(`/users/${id}`, t, { method: "DELETE" }),
+  searchUsers: (t: string, q: string) => req(`/users/search?q=${encodeURIComponent(q)}`, t),
+  promoteUser: (t: string, id: string) => req(`/users/${id}/promote`, t, { method: "PUT" }),
 
   events: (t: string, p = 1, status = "", s = "", sz = 20, isUserSubmitted?: boolean) => {
     let url = `/events?page=${p}&page_size=${sz}&status=${status}&search=${encodeURIComponent(s)}`;

@@ -8,8 +8,12 @@ export function AdminUsers({ token }: { token: string }) {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [promoteQuery, setPromoteQuery] = useState("");
+  const [promoteResults, setPromoteResults] = useState<any[]>([]);
+  const [promoting, setPromoting] = useState<string | null>(null);
   const pageSize = 20;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const promoteRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -27,17 +31,75 @@ export function AdminUsers({ token }: { token: string }) {
 
   useEffect(() => { refresh(); }, [token, page, debouncedSearch]);
 
-  const handleSearch = (v: string) => { setSearch(v); setPage(1); };
+  const handlePromoteSearch = (q: string) => {
+    setPromoteQuery(q);
+    if (promoteRef.current) clearTimeout(promoteRef.current);
+    if (!q.trim()) { setPromoteResults([]); return; }
+    promoteRef.current = setTimeout(() => {
+      adminApi.searchUsers(token, q).then(setPromoteResults).catch(() => setPromoteResults([]));
+    }, 300);
+  };
+
+  const handlePromote = (userId: string) => {
+    setPromoting(userId);
+    adminApi.promoteUser(token, userId)
+      .then(() => { setPromoteResults([]); setPromoteQuery(""); refresh(); })
+      .catch((e: any) => alert(e.message || "Failed"))
+      .finally(() => setPromoting(null));
+  };
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <div className="p-4 md:p-6 space-y-6">
+      <div>
+        <h2 className="text-xl font-bold">Admins & Maintainers</h2>
+        <p className="text-xs text-slate-500 mt-1">People who can access this dashboard and approve events</p>
+      </div>
+
+      {/* Promote section */}
+      <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4">
+        <h3 className="text-sm font-semibold text-slate-300 mb-3">Promote user to admin</h3>
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={promoteQuery}
+            onChange={(e) => handlePromoteSearch(e.target.value)}
+            className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500"
+          />
+          {promoteResults.length > 0 && (
+            <div className="absolute z-10 top-full mt-1 w-full bg-[#0d0d14] border border-white/[0.08] rounded-lg overflow-hidden shadow-xl">
+              {promoteResults.map((u) => (
+                <div key={u.id} className="flex items-center justify-between px-3 py-2 hover:bg-white/[0.04] border-b border-white/[0.04] last:border-0">
+                  <div className="min-w-0">
+                    <div className="text-sm text-white truncate">{u.name}</div>
+                    <div className="text-xs text-slate-500 truncate">{u.email}</div>
+                  </div>
+                  {u.is_admin ? (
+                    <span className="text-xs text-neon-blue bg-neon-blue/10 px-2 py-0.5 rounded-full shrink-0 ml-2">Already admin</span>
+                  ) : (
+                    <button
+                      onClick={() => handlePromote(u.id)}
+                      disabled={promoting === u.id}
+                      className="text-xs px-3 py-1 bg-neon-blue/20 text-neon-blue rounded-lg hover:bg-neon-blue/30 transition shrink-0 ml-2 disabled:opacity-50"
+                    >
+                      {promoting === u.id ? "..." : "Promote"}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Current admins table */}
       <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-bold">Users ({total})</h2>
+        <h3 className="text-sm font-semibold text-slate-300">Current admins ({total})</h3>
         <input
           type="text"
           placeholder="Search..."
           value={search}
-          onChange={(e) => handleSearch(e.target.value)}
+          onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 w-48"
         />
       </div>
@@ -53,7 +115,6 @@ export function AdminUsers({ token }: { token: string }) {
                   <th className="text-left p-3">Name</th>
                   <th className="text-left p-3">Email</th>
                   <th className="text-left p-3">Joined</th>
-                  <th className="text-left p-3">Admin</th>
                   <th className="text-left p-3">Active</th>
                   <th className="text-right p-3">Actions</th>
                 </tr>
@@ -65,24 +126,21 @@ export function AdminUsers({ token }: { token: string }) {
                     <td className="p-3 text-slate-400">{u.email}</td>
                     <td className="p-3 text-slate-400 text-xs">{new Date(u.created_at).toLocaleDateString()}</td>
                     <td className="p-3">
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${u.is_admin ? "bg-neon-blue/20 text-neon-blue" : "bg-white/[0.04] text-slate-500"}`}>
-                        {u.is_admin ? "Yes" : "No"}
-                      </span>
-                    </td>
-                    <td className="p-3">
                       <span className={`text-xs px-2 py-0.5 rounded-full ${u.is_active ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"}`}>
                         {u.is_active ? "Active" : "Disabled"}
                       </span>
                     </td>
                     <td className="p-3">
                       <div className="flex items-center justify-end gap-1">
-                        <ActionBtn label="Admin" onClick={() => adminApi.toggleAdmin(token, u.id).then(refresh).catch((e: any) => alert(e.message || "Failed"))} />
+                        <ActionBtn label="Remove Admin" danger onClick={() => adminApi.toggleAdmin(token, u.id).then(refresh).catch((e: any) => alert(e.message || "Failed"))} />
                         <ActionBtn label={u.is_active ? "Disable" : "Enable"} onClick={() => adminApi.toggleActive(token, u.id).then(refresh).catch((e: any) => alert(e.message || "Failed"))} />
-                        <ActionBtn label="Delete" danger onClick={() => confirm(`Delete ${u.name}?`) && adminApi.deleteUser(token, u.id).then(refresh).catch((e: any) => alert(e.message || "Failed"))} />
                       </div>
                     </td>
                   </tr>
                 ))}
+                {users.length === 0 && (
+                  <tr><td colSpan={5} className="p-6 text-center text-slate-500 text-sm">No admins found</td></tr>
+                )}
               </tbody>
             </table>
           </div>

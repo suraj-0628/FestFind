@@ -186,7 +186,7 @@ def list_users(
     user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(User)
+    query = db.query(User).filter(User.is_admin == True)
     if search:
         query = query.filter(
             (User.name.ilike(f"%{search}%")) | (User.email.ilike(f"%{search}%"))
@@ -196,7 +196,7 @@ def list_users(
 
 @router.get("/users/count")
 def user_count(user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
-    return {"total": db.query(func.count(User.id)).scalar()}
+    return {"total": db.query(func.count(User.id)).filter(User.is_admin == True).scalar()}
 
 
 @router.put("/users/{user_id}/admin")
@@ -209,6 +209,31 @@ def toggle_admin(user_id: str, user: User = Depends(get_admin_user), db: Session
     target.is_admin = not target.is_admin
     db.commit()
     return {"is_admin": target.is_admin}
+
+
+@router.get("/users/search")
+def search_users(
+    q: str = Query("", min_length=1),
+    user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Search all registered users (for promoting to admin)."""
+    users = db.query(User).filter(
+        (User.name.ilike(f"%{q}%")) | (User.email.ilike(f"%{q}%"))
+    ).limit(20).all()
+    return [{"id": u.id, "name": u.name, "email": u.email, "is_admin": u.is_admin} for u in users]
+
+
+@router.put("/users/{user_id}/promote")
+def promote_to_admin(user_id: str, user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+    target = db.query(User).filter(User.id == user_id).first()
+    if not target:
+        raise HTTPException(404, "User not found")
+    if target.is_admin:
+        raise HTTPException(400, "User is already an admin")
+    target.is_admin = True
+    db.commit()
+    return {"message": f"{target.name} promoted to admin"}
 
 
 @router.put("/users/{user_id}/active")
