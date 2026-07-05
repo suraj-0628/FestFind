@@ -122,8 +122,8 @@ function eventPopup(e: EventData, status: string): string {
       ${e.city ? `<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg> ${escapeHtml(e.city)}${e.state ? ", " + escapeHtml(e.state) : ""}
       </div>` : ""}
-      ${e.organizer ? `<div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#94a3b8">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> ${escapeHtml(e.organizer.length > 40 ? e.organizer.slice(0, 40) + "..." : e.organizer)}
+      ${e.organizer ? `<div style="display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:#e2e8f0">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> ${escapeHtml(e.organizer.length > 40 ? e.organizer.slice(0, 40) + "..." : e.organizer)}
       </div>` : ""}
     </div>
     ${e.category ? `<div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px">

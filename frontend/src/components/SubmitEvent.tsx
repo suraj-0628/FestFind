@@ -48,13 +48,9 @@ export function SubmitEvent({ onClose, onSubmitted, token }: Props) {
   const previewMapInstance = useRef<L.Map | null>(null);
   const previewMarker = useRef<L.Marker | null>(null);
   const geocodeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mapsLinkTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const userPinnedRef = useRef(false);
   const [detectedAddr, setDetectedAddr] = useState("");
-  const [locSearch, setLocSearch] = useState("");
-  const [locResults, setLocResults] = useState<{ lat: number; lng: number; display: string }[]>([]);
-  const [locSearching, setLocSearching] = useState(false);
-  const [showLocResults, setShowLocResults] = useState(false);
   const [resolving, setResolving] = useState(false);
 
   const markTouched = (key: string) => setTouched((t) => ({ ...t, [key]: true }));
@@ -132,37 +128,6 @@ export function SubmitEvent({ onClose, onSubmitted, token }: Props) {
         }
       }
     }
-  };
-
-  const handleLocSearch = (value: string) => {
-    setLocSearch(value);
-    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-    if (value.trim().length < 3) { setLocResults([]); setShowLocResults(false); return; }
-    searchTimerRef.current = setTimeout(async () => {
-      setLocSearching(true);
-      try {
-        // Build smart query: if city is filled, append it for better results
-        const cityState = [form.city, form.state, "India"].filter(Boolean).join(", ");
-        const q = form.city ? `${value}, ${cityState}` : `${value}, India`;
-        const nRes = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5`, { headers: { "User-Agent": "FestFind/1.0" } });
-        const data = await nRes.json();
-        setLocResults(data.map((r: any) => ({ lat: parseFloat(r.lat), lng: parseFloat(r.lon), display: r.display_name })));
-        setShowLocResults(true);
-      } catch {
-        setLocResults([]);
-      } finally {
-        setLocSearching(false);
-      }
-    }, 400);
-  };
-
-  const selectLocResult = (r: { lat: number; lng: number; display: string }) => {
-    setPinLat(r.lat);
-    setPinLng(r.lng);
-    userPinnedRef.current = true;
-    setLocSearch(r.display.split(",").slice(0, 3).join(","));
-    setShowLocResults(false);
-    setLocResults([]);
   };
 
   // Auto-geocode when venue/city/state changes (debounced)
@@ -255,7 +220,7 @@ export function SubmitEvent({ onClose, onSubmitted, token }: Props) {
     setUploadError(null);
     setUploading(true);
     try {
-      const url = await uploadImage(file);
+      const url = await uploadImage(file, token);
       update("image_url", url);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
@@ -272,7 +237,7 @@ export function SubmitEvent({ onClose, onSubmitted, token }: Props) {
     setUploadError(null);
     setUploading(true);
     try {
-      const url = await uploadImage(file);
+      const url = await uploadImage(file, token);
       update("image_url", url);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
@@ -527,11 +492,13 @@ export function SubmitEvent({ onClose, onSubmitted, token }: Props) {
               <label htmlFor="event-maps-link" className="block text-[10px] text-slate-600 mb-0.5">Google Maps Link</label>
               <input
                 id="event-maps-link"
-                placeholder="Paste any Google Maps link (short links work too)"
-                onPaste={(e) => {
-                  setTimeout(() => handleMapsLink(e.clipboardData.getData("text")), 0);
+                placeholder="Paste Google Maps link"
+                onChange={(e) => {
+                  if (mapsLinkTimer.current) clearTimeout(mapsLinkTimer.current);
+                  const val = e.target.value;
+                  if (!val.trim()) return;
+                  mapsLinkTimer.current = setTimeout(() => handleMapsLink(val), 500);
                 }}
-                onBlur={(e) => handleMapsLink(e.currentTarget.value)}
                 className={inputClass}
               />
               {resolving && <p className="text-[10px] text-neon-blue mt-1">Resolving location link...</p>}
@@ -545,84 +512,12 @@ export function SubmitEvent({ onClose, onSubmitted, token }: Props) {
                 Pinned at {pinLat.toFixed(4)}, {pinLng.toFixed(4)}
               </p>
             )}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!navigator.geolocation) return;
-                  setGeocoding(true);
-                  navigator.geolocation.getCurrentPosition(
-                    async (pos) => {
-                      const { latitude: lat, longitude: lng } = pos.coords;
-                      setPinLat(lat);
-                      setPinLng(lng);
-                      userPinnedRef.current = true;
-                      // Reverse geocode to fill city/state and show detected address
-                      try {
-                        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, { headers: { "User-Agent": "FestFind/1.0" } });
-                        const data = await res.json();
-                        const addr = data.address || {};
-                        const city = addr.city || addr.town || addr.village || addr.county || "";
-                        const state = addr.state || "";
-                        const road = addr.road || addr.neighbourhood || addr.suburb || "";
-                        if (city) update("city", city);
-                        if (state) update("state", state);
-                        if (road) update("venue", road);
-                        setDetectedAddr(data.display_name || "");
-                      } catch {}
-                      setGeocoding(false);
-                    },
-                    () => { setGeocoding(false); },
-                    { enableHighAccuracy: true, timeout: 10000 }
-                  );
-                }}
-                disabled={geocoding}
-                className="flex items-center gap-1.5 rounded-lg bg-neon-blue/10 border border-neon-blue/20 px-3 py-1.5 text-[11px] text-neon-blue hover:bg-neon-blue/20 transition disabled:opacity-50"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
-                {geocoding ? "Locating..." : "Use my current location"}
-              </button>
-            </div>
             {detectedAddr && (
               <p className="text-[10px] text-slate-500 leading-relaxed">
                 Detected: <span className="text-slate-400">{detectedAddr.split(",").slice(0, 4).join(",")}</span>
-                <span className="text-neon-blue ml-1">— search above to pin exact venue</span>
               </p>
             )}
-            {/* Small preview map with search */}
-            <div className="relative rounded-lg overflow-hidden border border-white/[0.08]">
-              <div className="absolute top-2 left-2 right-2 z-[500]">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search venue or landmark..."
-                    value={locSearch}
-                    onChange={(e) => handleLocSearch(e.target.value)}
-                    onFocus={() => locResults.length > 0 && setShowLocResults(true)}
-                    onBlur={() => setTimeout(() => setShowLocResults(false), 200)}
-                    className="w-full rounded-lg bg-[#0a0a0f]/90 backdrop-blur-sm border border-white/[0.08] px-3 py-2 text-xs text-white placeholder-slate-500 outline-none focus:border-neon-blue/50 transition"
-                  />
-                  {locSearching && (
-                    <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
-                      <div className="w-3 h-3 border-2 border-slate-500 border-t-neon-blue rounded-full animate-spin" />
-                    </div>
-                  )}
-                </div>
-                {showLocResults && locResults.length > 0 && (
-                  <div className="mt-1 rounded-lg bg-[#0a0a0f]/95 backdrop-blur-sm border border-white/[0.08] shadow-xl overflow-hidden max-h-36 overflow-y-auto">
-                    {locResults.map((r, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onMouseDown={() => selectLocResult(r)}
-                        className="w-full px-3 py-2 text-left text-[11px] text-slate-300 hover:bg-neon-blue/10 transition border-b border-white/[0.04] last:border-0"
-                      >
-                        {r.display}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div className="rounded-lg overflow-hidden border border-white/[0.08]">
               <div ref={previewMapRef} className="w-full h-[200px]" />
             </div>
           </div>
@@ -682,7 +577,7 @@ export function SubmitEvent({ onClose, onSubmitted, token }: Props) {
 
         <div>
           <label className="block text-xs text-slate-500 mb-1">
-            Event Poster {form.event_type === "physical" ? "* (for verification)" : ""}
+            Event Poster {form.event_type === "physical" ? "*" : ""}
           </label>
           <input
             ref={fileInputRef}

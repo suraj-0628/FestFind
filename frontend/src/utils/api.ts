@@ -105,10 +105,12 @@ export function getEventStatus(e: EventData): "ongoing" | "upcoming" | "past" {
   return "past";
 }
 
-export async function uploadImage(file: File): Promise<string> {
+export async function uploadImage(file: File, token?: string): Promise<string> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch(UPLOAD_BASE + "/", { method: "POST", body: form });
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const res = await fetch(UPLOAD_BASE + "/", { method: "POST", headers, body: form });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Upload failed" }));
     throw new Error(err.detail || "Upload failed");
@@ -161,4 +163,11 @@ export async function authMe(token: string): Promise<{ id: string; email: string
   const text = await res.text();
   if (!text) throw new Error("Empty response from server");
   return JSON.parse(text);
+}
+
+export async function authLogout(token: string): Promise<void> {
+  await fetch(`${AUTH_BASE}/logout`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+  });
 }

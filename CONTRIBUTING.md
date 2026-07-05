@@ -77,11 +77,14 @@ Check the [Issues](https://github.com/suraj-0628/FestFind/issues) page for open 
 |------|---------|
 | `frontend/src/App.tsx` | Main app layout, routing, auth gating |
 | `frontend/src/components/IndiaMap.tsx` | Map with markers and clustering |
-| `frontend/src/components/SubmitEvent.tsx` | Event submission form |
-| `frontend/src/components/MapPicker.tsx` | Embedded map for location picking |
-| `backend/app/routers/events.py` | Event CRUD API |
-| `backend/app/routers/auth.py` | Authentication endpoints |
+| `frontend/src/components/SubmitEvent.tsx` | Event submission form (Google Maps link location) |
+| `frontend/src/hooks/useAuth.tsx` | Auth context with token management |
+| `backend/app/routers/events.py` | Event CRUD API, geocoding, Maps link resolver |
+| `backend/app/routers/auth.py` | Authentication endpoints (register, login, logout, me) |
+| `backend/app/routers/upload.py` | Image upload/serve with validation |
+| `backend/app/rate_limit.py` | In-memory sliding window rate limiter |
 | `backend/app/scraper/knowafest_scraper.py` | Event scraper |
+| `backend/app/scraper/scheduler.py` | APScheduler, event storage, auto-detect online/physical |
 
 ## Questions?
 

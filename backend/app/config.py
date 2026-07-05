@@ -1,5 +1,5 @@
 import os
-import secrets
+import sys
 
 from pydantic_settings import BaseSettings
 
@@ -20,4 +20,5 @@ class Settings(BaseSettings):
 settings = Settings()
 
 if not settings.jwt_secret:
-    settings.jwt_secret = secrets.token_hex(32)
+    print("FATAL: JWT_SECRET not set in environment/.env. Tokens will not work.", file=sys.stderr)
+    sys.exit(1)

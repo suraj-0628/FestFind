@@ -2,18 +2,35 @@ import hashlib
 import hmac
 import os
 import re
+import time
 from datetime import datetime, timedelta, timezone
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
 from app.models import User
+from app.rate_limit import rate_limit_auth
 
 router = APIRouter()
+
+# In-memory token blacklist: {jti: expiry_timestamp}
+_token_blacklist: dict[str, float] = {}
+
+
+def _cleanup_blacklist():
+    """Remove expired entries every call (cheap — set is tiny)."""
+    now = time.time()
+    expired = [k for k, v in _token_blacklist.items() if v < now]
+    for k in expired:
+        del _token_blacklist[k]
+
+
+def _revoke_token(jti: str, expires_at: float):
+    _token_blacklist[jti] = expires_at
 
 # Domains allowed for registration
 ALLOWED_EMAIL_DOMAINS = {
@@ -67,6 +84,7 @@ def create_token(user_id: str) -> str:
         "sub": user_id,
         "exp": datetime.now(timezone.utc) + timedelta(hours=settings.jwt_expire_hours),
         "iat": datetime.now(timezone.utc),
+        "jti": os.urandom(8).hex(),
     }
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
@@ -78,8 +96,11 @@ def get_current_user(authorization: str | None = Header(None), db: Session = Dep
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         user_id = payload.get("sub")
+        jti = payload.get("jti")
         if not user_id:
             raise HTTPException(401, "Invalid token")
+        if jti and jti in _token_blacklist:
+            raise HTTPException(401, "Token revoked")
     except jwt.ExpiredSignatureError:
         raise HTTPException(401, "Token expired")
     except jwt.InvalidTokenError:
@@ -108,11 +129,12 @@ class AuthResponse(BaseModel):
 
 
 @router.post("/register", response_model=AuthResponse)
-def register(req: RegisterRequest, db: Session = Depends(get_db)):
+def register(req: RegisterRequest, request: Request, db: Session = Depends(get_db)):
+    rate_limit_auth(request)
     if len(req.name.strip()) < 2:
         raise HTTPException(400, "Name must be at least 2 characters")
-    if len(req.password) < 6:
-        raise HTTPException(400, "Password must be at least 6 characters")
+    if len(req.password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters")
 
     valid, msg = _is_valid_email(req.email.lower())
     if not valid:
@@ -139,7 +161,8 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=AuthResponse)
-def login(req: LoginRequest, db: Session = Depends(get_db)):
+def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
+    rate_limit_auth(request)
     user = db.query(User).filter(User.email == req.email.lower()).first()
     if not user or not _verify_password(req.password, user.password_hash):
         raise HTTPException(401, "Invalid email or password")
@@ -154,6 +177,24 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=dict)
 def get_me(user: User = Depends(get_current_user)):
     return {"id": user.id, "email": user.email, "name": user.name, "is_admin": user.is_admin}
+
+
+@router.post("/logout")
+def logout(authorization: str | None = Header(None)):
+    """Revoke current token (in-memory blacklist)."""
+    _cleanup_blacklist()
+    if not authorization or not authorization.startswith("Bearer "):
+        return {"ok": True}
+    token = authorization.split(" ", 1)[1]
+    try:
+        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm], options={"verify_exp": False})
+        jti = payload.get("jti")
+        exp = payload.get("exp", 0)
+        if jti:
+            _revoke_token(jti, exp)
+    except jwt.InvalidTokenError:
+        pass
+    return {"ok": True}
 
 
 def get_admin_user(user: User = Depends(get_current_user)) -> User:

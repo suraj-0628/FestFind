@@ -45,30 +45,45 @@ Interactive India map-based platform for discovering and hosting college events.
 - Design follows Apple HIG, Claude.ai, Google Maps, Airbnb, Spotify patterns
 
 ### Phase 5: Event Submission
-- MapPicker: search-first UX with Nominatim, click/tap fallback
-- Auto-detects user location on load (browser geolocation → IP fallback → localStorage)
-- Google Maps link field for coordinate extraction
-- `_extract_coords_from_maps_url()` parses `@lat,lng`, `?q=lat,lng`, `?ll=lat,lng`
-- Nominatim fallback geocoding when no lat/lng provided
-- Image upload: JPEG/PNG/WebP/GIF, max 5MB, saved to `backend/uploads/`
+- Location picker: Google Maps link paste only (MapPicker removed, no map click/drag)
+- Apple Maps direct extraction (`?ll=lat,lng`), Google Maps via headless Chromium resolver
+- Text-based location fields: venue, city (text input), state (dropdown)
+- Auto-geocoding on venue/city/state change (debounced 800ms), skipped when user pins via Maps link
+- `userPinnedRef` prevents auto-geocode from overwriting user-pinned coords
+- Image upload: JPEG/PNG/WebP/GIF, max 5MB, saved to `backend/uploads/`, requires auth token
 - SubmitEvent stores contact/deadline/fee in `tags` field (no schema change)
 - State name standardization: "Jammu & Kashmir" matches `india-regions.ts` format
+- Required fields: title, organizer, category, start/end dates, city/state/poster (physical only)
+- 500-word description limit with live word count
+- Event type toggle: physical (coords + poster required) / online (no coords)
+- Preview section shows live form state
+- Registration URL validation (must start with http/https)
+- Registration deadline and entry fee fields
 
 ### Phase 6: Auth System
 - User model: id, email, name, password_hash, created_at
 - `POST /api/auth/register` with email validation (blocks disposable domains, allows edu/gmail/outlook)
-- `POST /api/auth/login`, `GET /api/auth/me`
-- JWT tokens: HS256, 72hr expiry, `Authorization: Bearer` header
-- Password: PBKDF2-HMAC-SHA256 with per-user random salt
-- AuthContext: localStorage token, auto-validation on load
+- `POST /api/auth/login`, `GET /api/auth/me`, `POST /api/auth/logout`
+- JWT tokens: HS256, 72hr expiry, `Authorization: Bearer` header, `jti` claim for revocation
+- Password: PBKDF2-HMAC-SHA256 with per-user random salt, min 8 chars
+- AuthContext: sessionStorage token, auto-validation on load
+- Token revocation: in-memory blacklist (set of `jti` claims, auto-cleanup on expiry)
 - Host tab always says "Host" — user discovers login requirement by clicking
 - Auto-transition to host page after login
 
-### Phase 7: Pre-Push Cleanup (Current)
-- JWT secret: no longer hardcoded, generates random secret per startup
-- Password hashing: SHA-256 + static salt → PBKDF2 + per-user random salt
+### Phase 7: Security Hardening (Current)
+- 10 security fixes implemented:
+  1. Command injection in `/resolve-link` — URL allowlist (google.com/maps, maps.app.goo.gl, goo.gl/maps)
+  2. JWT secret — `sys.exit(1)` at startup if `JWT_SECRET` not set (was regenerating on restart)
+  3. Rate limiting — in-memory sliding window: auth 5/min, events 10/min, upload 5/min, resolve 3/min
+  4. Path traversal in image serving — regex validates filename is `32-hex.ext`
+  5. File content validation — magic bytes checked on upload, not trusting Content-Type header
+  6. Stored XSS — HTML strip + entity decode on all event string fields
+  7. Feature flags endpoint — requires admin auth
+  8. Token storage — localStorage → sessionStorage
+  9. Password policy — min 6 → min 8 chars
+  10. Token revocation — in-memory blacklist + `/api/auth/logout` endpoint
 - CORS: restricted from `*` to specific localhost origins
-- Docker credentials: env var references with `.env` requirement
 - Dead files removed: india-states.geojson, india-states-geojson.ts, college_fest.db
 - Unused npm deps removed: three, @react-three/*, react-leaflet, @types/geojson
 - Unused pip dep removed: alembic
@@ -96,18 +111,28 @@ Interactive India map-based platform for discovering and hosting college events.
 - Brand: cyan + green + pink
 - Sora font
 - Custom SVG icons
-- MapPicker for event location
-- Google Maps link for coords
+- Google Maps link for location picker (replaced MapPicker)
 - tags field for contact/deadline/fee
 - PBKDF2 password hashing
 - JWT with PyJWT
 - Host tab always says "Host"
 - Auto-transition after login
+- sessionStorage over localStorage for tokens
+- Password min 8 chars
+- Token revocation via in-memory jti blacklist
+- Rate limiting: in-memory sliding window (no new deps)
+- XSS: strip HTML tags + unescape entities on input
+- File upload: magic bytes validation (don't trust Content-Type)
+- Image serving: regex-validated filenames only
 
 ## Running State
 - Frontend: port 5173 (`--host 0.0.0.0`)
 - Backend: port 8000 (`python3 -m uvicorn`)
 - E2E: 48/48 passing
-- Scraper: 173+ events in DB
+- Scraper: 113 events in DB (98 physical, 15 online)
 - Service worker: skips on localhost
 - `email_validator` NOT installed — use plain `str` not `EmailStr`
+- Rate limits: auth 5/min, events 10/min, upload 5/min, resolve 3/min per IP
+- Playwright installed for Google Maps link resolver
+- JWT secret: required env var, server exits if missing
+- Token blacklist: in-memory, auto-cleanup on expiry

@@ -61,11 +61,15 @@ backend/           Python FastAPI + SQLAlchemy + SQLite
 ## Security Checklist
 
 Before any commit:
-- [ ] No hardcoded secrets
-- [ ] All inputs validated
-- [ ] SQL injection prevented
-- [ ] XSS protection enabled
-- [ ] Auth verified
+- [ ] No hardcoded secrets (JWT_SECRET required env var, server exits if missing)
+- [ ] All inputs validated (XSS: HTML strip + entity decode on event fields)
+- [ ] SQL injection prevented (SQLAlchemy ORM)
+- [ ] XSS protection enabled (sanitize on input, escape on output)
+- [ ] Auth verified (PBKDF2 + hmac.compare_digest, JWT with jti revocation)
+- [ ] Rate limiting on auth/write endpoints (in-memory sliding window)
+- [ ] File uploads validated (magic bytes, not just Content-Type)
+- [ ] No path traversal in file serving (regex-validated filenames)
+- [ ] URL inputs validated (allowlist for Maps link resolver)
 
 ## Commands
 

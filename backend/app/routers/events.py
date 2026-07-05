@@ -1,8 +1,9 @@
 import uuid
 import re
+import html
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -11,8 +12,20 @@ from app.models import Event, User
 from app.schemas import EventCreate, EventList, EventOut
 from app.scraper.scheduler import get_scrape_status
 from app.routers.auth import get_current_user
+from app.rate_limit import rate_limit_events, rate_limit_resolve
 
 router = APIRouter()
+
+_XSS_STRIP = re.compile(r"<[^>]*>")
+
+
+def _sanitize(s: str | None) -> str | None:
+    """Strip HTML tags and decode entities from user input."""
+    if s is None:
+        return None
+    s = _XSS_STRIP.sub("", s)
+    s = html.unescape(s)
+    return s.strip()[:2000]
 
 
 def _extract_coords_from_maps_url(url: str) -> tuple[float | None, float | None]:
@@ -85,8 +98,13 @@ def list_events(
 
 
 @router.post("/", response_model=EventOut)
-def create_event(event: EventCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_event(event: EventCreate, request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    rate_limit_events(request)
     data = event.model_dump()
+    # Sanitize all string fields to prevent stored XSS
+    for key in ("title", "description", "organizer", "venue", "city", "state", "category", "event_url", "tags"):
+        if key in data and isinstance(data[key], str):
+            data[key] = _sanitize(data[key])
     if data.get("venue") and not data.get("latitude"):
         lat, lng = _extract_coords_from_maps_url(data["venue"])
         if lat is not None:
@@ -139,12 +157,18 @@ def api_geocode(q: str):
 
 
 @router.get("/resolve-link")
-def api_resolve_link(url: str):
+def api_resolve_link(url: str, request: Request):
     """Resolve a Google Maps short link to exact coordinates using headless browser."""
+    rate_limit_resolve(request)
     import subprocess
     import json
     import re
     import os
+
+    # Sanitize: only allow Google Maps / goo.gl URLs
+    allowed = re.compile(r"^https://(www\.google\.com/maps|maps\.app\.goo\.gl|goo\.gl/maps)")
+    if not allowed.match(url):
+        return {"url": url, "lat": None, "lng": None, "error": "Only Google Maps links are accepted"}
 
     script = os.path.join(os.path.dirname(__file__), "..", "scraper", "resolve_maps.mjs")
     try:
@@ -154,11 +178,9 @@ def api_resolve_link(url: str):
         )
         data = json.loads(result.stdout.strip())
         final_url = data.get("url", url)
-        # Extract @lat,lng from the resolved URL
         m = re.search(r"@(-?\d+\.?\d+),(-?\d+\.?\d+)", final_url)
         if m:
             return {"url": final_url, "lat": float(m.group(1)), "lng": float(m.group(2))}
-        # Fallback: !3d!4d pattern
         m = re.search(r"!3d(-?\d+\.?\d+)!4d(-?\d+\.?\d+)", final_url)
         if m:
             return {"url": final_url, "lat": float(m.group(1)), "lng": float(m.group(2))}
