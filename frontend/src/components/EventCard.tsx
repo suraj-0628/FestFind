@@ -59,6 +59,17 @@ export function EventCard({ event, onClick }: Props) {
           {event.category}
         </span>
       )}
+      {event.event_url && (
+        <a
+          href={event.event_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="mt-3 block w-full text-center rounded-lg bg-neon-blue/10 border border-neon-blue/30 px-3 py-2 text-xs font-semibold text-neon-blue transition hover:bg-neon-blue hover:text-black"
+        >
+          Reg Now
+        </a>
+      )}
     </div>
   );
 }
