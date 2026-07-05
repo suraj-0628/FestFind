@@ -11,6 +11,7 @@ export function AdminEvents({ token, isUserSubmitted }: { token: string; isUserS
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [posterEvent, setPosterEvent] = useState<any>(null);
   const pageSize = 20;
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -128,7 +129,13 @@ export function AdminEvents({ token, isUserSubmitted }: { token: string; isUserS
                     <td className="p-3">
                       <div className="flex items-center gap-3">
                         {e.image_url && (
-                          <img src={e.image_url} alt="" className="w-10 h-10 rounded object-cover shrink-0 border border-white/[0.08]" onError={(ev) => { (ev.target as HTMLImageElement).style.display = "none"; }} />
+                          isUserSubmitted ? (
+                            <button onClick={() => setPosterEvent(e)} className="shrink-0 group">
+                              <img src={e.image_url} alt="" className="w-10 h-10 rounded object-cover border border-white/[0.08] group-hover:border-neon-blue/50 transition" onError={(ev) => { (ev.target as HTMLImageElement).style.display = "none"; }} />
+                            </button>
+                          ) : (
+                            <img src={e.image_url} alt="" className="w-10 h-10 rounded object-cover shrink-0 border border-white/[0.08]" onError={(ev) => { (ev.target as HTMLImageElement).style.display = "none"; }} />
+                          )
                         )}
                         <div className="min-w-0">
                           <div className="max-w-[200px] md:max-w-[300px] truncate font-medium">{e.title}</div>
@@ -179,6 +186,20 @@ export function AdminEvents({ token, isUserSubmitted }: { token: string; isUserS
         <span className="text-sm text-slate-400">Page {page}</span>
         <button disabled={events.length < pageSize} onClick={() => setPage(page + 1)} className="px-3 py-1.5 text-sm rounded-lg bg-white/[0.04] hover:bg-white/[0.06] disabled:opacity-30">Next</button>
       </div>
+
+      {posterEvent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4" onClick={() => setPosterEvent(null)}>
+          <div className="relative max-w-2xl w-full bg-[#0d0d14] rounded-xl border border-white/[0.08] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setPosterEvent(null)} className="absolute top-3 right-3 z-10 w-8 h-8 rounded-full bg-black/60 flex items-center justify-center hover:bg-black/80 transition text-white text-sm">✕</button>
+            <img src={posterEvent.image_url} alt={posterEvent.title} className="w-full max-h-[70vh] object-contain bg-black" />
+            <div className="p-4">
+              <h3 className="text-sm font-bold text-white">{posterEvent.title}</h3>
+              <p className="text-xs text-slate-400 mt-1">{posterEvent.organizer}{posterEvent.city ? ` — ${posterEvent.city}` : ""}</p>
+              {posterEvent.description && <p className="text-xs text-slate-500 mt-2 line-clamp-3">{posterEvent.description}</p>}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

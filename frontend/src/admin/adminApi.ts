@@ -36,6 +36,7 @@ export const adminApi = {
     if (isUserSubmitted !== undefined) url += `&is_user_submitted=${isUserSubmitted}`;
     return req(url, t);
   },
+  allEvents: (t: string, limit = 500) => req(`/events/all?limit=${limit}`, t),
   eventCount: (t: string, status = "", isUserSubmitted?: boolean) => {
     let url = `/events/count?status=${status}`;
     if (isUserSubmitted !== undefined) url += `&is_user_submitted=${isUserSubmitted}`;
