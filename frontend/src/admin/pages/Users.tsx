@@ -1,22 +1,31 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { adminApi } from "../adminApi";
 
 export function AdminUsers({ token }: { token: string }) {
   const [users, setUsers] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const pageSize = 20;
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [search]);
 
   const refresh = () => {
     setLoading(true);
     Promise.all([
-      adminApi.users(token, page, search),
+      adminApi.users(token, page, debouncedSearch),
       adminApi.userCount(token),
     ]).then(([u, c]) => { setUsers(u); setTotal(c.total); }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { refresh(); }, [token, page, search]);
+  useEffect(() => { refresh(); }, [token, page, debouncedSearch]);
 
   const handleSearch = (v: string) => { setSearch(v); setPage(1); };
 
@@ -67,9 +76,9 @@ export function AdminUsers({ token }: { token: string }) {
                     </td>
                     <td className="p-3">
                       <div className="flex items-center justify-end gap-1">
-                        <ActionBtn label="Admin" onClick={() => adminApi.toggleAdmin(token, u.id).then(refresh)} />
-                        <ActionBtn label={u.is_active ? "Disable" : "Enable"} onClick={() => adminApi.toggleActive(token, u.id).then(refresh)} />
-                        <ActionBtn label="Delete" danger onClick={() => confirm(`Delete ${u.name}?`) && adminApi.deleteUser(token, u.id).then(refresh)} />
+                        <ActionBtn label="Admin" onClick={() => adminApi.toggleAdmin(token, u.id).then(refresh).catch((e: any) => alert(e.message || "Failed"))} />
+                        <ActionBtn label={u.is_active ? "Disable" : "Enable"} onClick={() => adminApi.toggleActive(token, u.id).then(refresh).catch((e: any) => alert(e.message || "Failed"))} />
+                        <ActionBtn label="Delete" danger onClick={() => confirm(`Delete ${u.name}?`) && adminApi.deleteUser(token, u.id).then(refresh).catch((e: any) => alert(e.message || "Failed"))} />
                       </div>
                     </td>
                   </tr>
@@ -83,7 +92,7 @@ export function AdminUsers({ token }: { token: string }) {
       <div className="flex items-center justify-center gap-2">
         <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="px-3 py-1.5 text-sm rounded-lg bg-white/[0.04] hover:bg-white/[0.06] disabled:opacity-30">Prev</button>
         <span className="text-sm text-slate-400">Page {page}</span>
-        <button disabled={users.length < 20} onClick={() => setPage(page + 1)} className="px-3 py-1.5 text-sm rounded-lg bg-white/[0.04] hover:bg-white/[0.06] disabled:opacity-30">Next</button>
+        <button disabled={users.length < pageSize} onClick={() => setPage(page + 1)} className="px-3 py-1.5 text-sm rounded-lg bg-white/[0.04] hover:bg-white/[0.06] disabled:opacity-30">Next</button>
       </div>
     </div>
   );

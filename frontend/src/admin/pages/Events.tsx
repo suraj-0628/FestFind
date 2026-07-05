@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { adminApi } from "../adminApi";
 
 export function AdminEvents({ token }: { token: string }) {
@@ -6,19 +6,29 @@ export function AdminEvents({ token }: { token: string }) {
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const pageSize = 20;
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [search]);
 
   const refresh = () => {
     setLoading(true);
     Promise.all([
-      adminApi.events(token, page, filter, search),
+      adminApi.events(token, page, filter, debouncedSearch),
       adminApi.eventCount(token, filter),
     ]).then(([e, c]) => { setEvents(e); setTotal(c.total); setSelected(new Set()); }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { refresh(); }, [token, page, filter, search]);
+  useEffect(() => { refresh(); }, [token, page, filter, debouncedSearch]);
 
   const toggleSelect = (id: string) => {
     const next = new Set(selected);
@@ -39,10 +49,17 @@ export function AdminEvents({ token }: { token: string }) {
     if (!ids.length) return;
     if (action === "delete" && !confirm(`Delete ${ids.length} events?`)) return;
     if (action === "reject" && !confirm(`Reject ${ids.length} events?`)) return;
-    if (action === "approve") await adminApi.bulkApprove(token, ids);
-    if (action === "reject") await adminApi.bulkReject(token, ids);
-    if (action === "delete") await adminApi.bulkDelete(token, ids);
-    refresh();
+    setBulkLoading(true);
+    try {
+      if (action === "approve") await adminApi.bulkApprove(token, ids);
+      if (action === "reject") await adminApi.bulkReject(token, ids);
+      if (action === "delete") await adminApi.bulkDelete(token, ids);
+      refresh();
+    } catch (e: any) {
+      alert(e.message || "Bulk action failed");
+    } finally {
+      setBulkLoading(false);
+    }
   };
 
   const handleExport = () => adminApi.exportEvents(token);
@@ -160,7 +177,7 @@ export function AdminEvents({ token }: { token: string }) {
       <div className="flex items-center justify-center gap-2">
         <button disabled={page <= 1} onClick={() => setPage(page - 1)} className="px-3 py-1.5 text-sm rounded-lg bg-white/[0.04] hover:bg-white/[0.06] disabled:opacity-30">Prev</button>
         <span className="text-sm text-slate-400">Page {page}</span>
-        <button disabled={events.length < 20} onClick={() => setPage(page + 1)} className="px-3 py-1.5 text-sm rounded-lg bg-white/[0.04] hover:bg-white/[0.06] disabled:opacity-30">Next</button>
+        <button disabled={events.length < pageSize} onClick={() => setPage(page + 1)} className="px-3 py-1.5 text-sm rounded-lg bg-white/[0.04] hover:bg-white/[0.06] disabled:opacity-30">Next</button>
       </div>
     </div>
   );

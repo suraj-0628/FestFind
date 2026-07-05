@@ -40,7 +40,7 @@ export const adminApi = {
   deleteEvent: (t: string, id: string) => req(`/events/${id}`, t, { method: "DELETE" }),
   bulkApprove: (t: string, ids: string[]) => req("/events/bulk-approve", t, { method: "PUT", body: JSON.stringify(ids) }),
   bulkReject: (t: string, ids: string[]) => req("/events/bulk-reject", t, { method: "PUT", body: JSON.stringify(ids) }),
-  bulkDelete: (t: string, ids: string[]) => req("/events/bulk-delete", t, { method: "DELETE", body: JSON.stringify(ids) }),
+  bulkDelete: (t: string, ids: string[]) => req("/events/bulk-delete", t, { method: "POST", body: JSON.stringify(ids) }),
 
   announcements: (t: string) => req("/announcements", t),
   createAnnouncement: (t: string, title: string, message: string) =>

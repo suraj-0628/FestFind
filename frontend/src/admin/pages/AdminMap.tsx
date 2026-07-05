@@ -3,6 +3,10 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { adminApi } from "../adminApi";
 
+function esc(s: string): string {
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
 export function AdminMap({ token }: { token: string }) {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
@@ -34,7 +38,7 @@ export function AdminMap({ token }: { token: string }) {
   useEffect(() => {
     setLoading(true);
     setError("");
-    adminApi.allEvents(token, 2000)
+    adminApi.allEvents(token, 5000)
       .then((data) => setEvents(data))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -68,7 +72,7 @@ export function AdminMap({ token }: { token: string }) {
         weight: 1,
         fillOpacity: 0.7,
       })
-        .bindPopup(`<b>${e.title}</b><br/>${e.city || ""}, ${e.state || ""}<br/>${e.category || ""}`)
+        .bindPopup(`<b>${esc(e.title || "")}</b><br/>${esc(e.city || "")}, ${esc(e.state || "")}<br/>${esc(e.category || "")}`)
         .addTo(map);
     });
   }, [events, filter]);

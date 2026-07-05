@@ -1,7 +1,7 @@
+import asyncio
 import csv
 import io
 import os
-import time
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -161,12 +161,18 @@ def scraper_status(user: User = Depends(get_admin_user)):
     return get_scrape_status()
 
 
+_scraper_lock = asyncio.Lock()
+
+
 @router.post("/scraper/run")
 async def scraper_run(user: User = Depends(get_admin_user)):
     if _scrape_status["is_running"]:
         raise HTTPException(409, "Scrape already running")
-    import asyncio
-    asyncio.create_task(run_scrape_job())
+    if _scraper_lock.locked():
+        raise HTTPException(409, "Scrape already queued")
+    async with _scraper_lock:
+        _scrape_status["is_running"] = True
+        asyncio.create_task(run_scrape_job())
     return {"message": "Scrape job started"}
 
 
@@ -240,14 +246,17 @@ def admin_all_events(
     events = db.query(Event).order_by(Event.created_at.desc()).limit(limit).all()
     return [
         {
-            "id": e.id, "title": e.title, "city": e.city, "state": e.state,
+            "id": e.id, "title": e.title, "description": e.description,
+            "event_url": e.event_url, "source_url": e.source_url,
+            "image_url": e.image_url, "venue": e.venue,
+            "city": e.city, "state": e.state,
             "latitude": e.latitude, "longitude": e.longitude,
             "category": e.category, "organizer": e.organizer,
             "event_type": e.event_type, "is_scraped": e.is_scraped,
             "is_user_submitted": e.is_user_submitted, "is_approved": e.is_approved,
             "start_date": e.start_date.isoformat() if e.start_date else None,
             "end_date": e.end_date.isoformat() if e.end_date else None,
-            "venue": e.venue, "source_url": e.source_url,
+            "created_at": e.created_at.isoformat() if e.created_at else None,
         }
         for e in events
     ]
@@ -336,7 +345,7 @@ def bulk_reject(event_ids: list[str], user: User = Depends(get_admin_user), db: 
     return {"message": f"{count} events rejected"}
 
 
-@router.delete("/events/bulk-delete")
+@router.post("/events/bulk-delete")
 def bulk_delete(event_ids: list[str], user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
     count = db.query(Event).filter(Event.id.in_(event_ids)).delete(synchronize_session=False)
     db.commit()
@@ -391,10 +400,30 @@ def export_users_csv(user: User = Depends(get_admin_user), db: Session = Depends
 
 @router.get("/system/health")
 def system_health(user: User = Depends(get_admin_user)):
-    db_path = settings.database_url.replace("sqlite:///", "")
+    db_url = settings.database_url
     db_size = 0
-    if os.path.exists(db_path):
-        db_size = os.path.getsize(db_path)
+    tables = {}
+    if db_url.startswith("sqlite:///"):
+        db_path = db_url.replace("sqlite:///", "")
+        if os.path.exists(db_path):
+            db_size = os.path.getsize(db_path)
+        with engine.connect() as conn:
+            rows = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()
+            for (table,) in rows:
+                try:
+                    count = conn.execute(text(f"SELECT COUNT(*) FROM [{table}]")).scalar()
+                    tables[table] = count
+                except Exception:
+                    pass
+    else:
+        with engine.connect() as conn:
+            rows = conn.execute(text("SELECT tablename FROM pg_tables WHERE schemaname='public'")).fetchall()
+            for (table,) in rows:
+                try:
+                    count = conn.execute(text(f'SELECT COUNT(*) FROM "{table}"')).scalar()
+                    tables[table] = count
+                except Exception:
+                    pass
 
     upload_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads")
     upload_count = 0
@@ -407,21 +436,11 @@ def system_health(user: User = Depends(get_admin_user)):
                     upload_count += 1
                     upload_size += os.path.getsize(fp)
 
-    with engine.connect() as conn:
-        tables = conn.execute(text("SELECT name FROM sqlite_master WHERE type='table'")).fetchall()
-        row_counts = {}
-        for (table,) in tables:
-            try:
-                count = conn.execute(text(f"SELECT COUNT(*) FROM [{table}]")).scalar()
-                row_counts[table] = count
-            except Exception:
-                pass
-
     return {
         "database": {
             "size_bytes": db_size,
             "size_mb": round(db_size / 1024 / 1024, 2),
-            "tables": row_counts,
+            "tables": tables,
         },
         "uploads": {
             "count": upload_count,
@@ -436,7 +455,7 @@ def system_logs(
     lines: int = Query(100, ge=10, le=500),
     user: User = Depends(get_admin_user),
 ):
-    log_file = "/tmp/backend.log"
+    log_file = os.environ.get("BACKEND_LOG_FILE", "/tmp/backend.log")
     if not os.path.exists(log_file):
         return {"logs": [], "message": "No log file found"}
     try:

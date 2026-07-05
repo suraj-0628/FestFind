@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useMediaQuery } from "../hooks/useMediaQuery";
-import { authLogin } from "../utils/api";
 import { adminApi } from "./adminApi";
 import { AdminOverview } from "./pages/Overview";
 import { AdminScraper } from "./pages/Scraper";
@@ -94,7 +93,7 @@ export function AdminApp() {
     );
   }
 
-  if (!(user as any).is_admin) {
+  if (!user || !user.is_admin) {
     return (
       <div className="h-[100dvh] flex items-center justify-center bg-[#0a0a0f] text-white">
         <div className="text-center">

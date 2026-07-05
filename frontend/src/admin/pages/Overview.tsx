@@ -47,7 +47,7 @@ export function AdminOverview({ token }: { token: string }) {
                   <div className="w-24 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
                     <div
                       className="h-full bg-neon-blue rounded-full"
-                      style={{ width: `${(c.count / data.events.total) * 100}%` }}
+                      style={{ width: `${data.events.total ? (c.count / data.events.total) * 100 : 0}%` }}
                     />
                   </div>
                   <span className="text-xs text-slate-500 w-8 text-right">{c.count}</span>
@@ -67,7 +67,7 @@ export function AdminOverview({ token }: { token: string }) {
                   <div className="w-24 h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
                     <div
                       className="h-full bg-pink-400 rounded-full"
-                      style={{ width: `${(s.count / data.events.total) * 100}%` }}
+                      style={{ width: `${data.events.total ? (s.count / data.events.total) * 100 : 0}%` }}
                     />
                   </div>
                   <span className="text-xs text-slate-500 w-8 text-right">{s.count}</span>
