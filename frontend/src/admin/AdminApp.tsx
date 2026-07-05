@@ -35,6 +35,10 @@ export function AdminApp() {
   const [loginError, setLoginError] = useState("");
   const [loginLoading, setLoginLoading] = useState(false);
 
+  useEffect(() => {
+    if (!loading && user?.role === "maintainer") setPage("submissions");
+  }, [loading, user]);
+
   if (loading) {
     return (
       <div className="h-[100dvh] flex items-center justify-center bg-[#0a0a0f] text-white">
@@ -94,18 +98,21 @@ export function AdminApp() {
     );
   }
 
-  if (!user || !user.is_admin) {
+  if (!user || (user.role !== "admin" && user.role !== "maintainer")) {
     return (
       <div className="h-[100dvh] flex items-center justify-center bg-[#0a0a0f] text-white">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-2">Access Denied</h1>
-          <p className="text-slate-400 mb-4">Admin access required for {user.email}</p>
+          <p className="text-slate-400 mb-4">Admin or maintainer access required for {user?.email}</p>
           <button onClick={logout} className="text-neon-blue hover:underline text-sm mr-4">Login as different user</button>
           <a href="/" className="text-slate-500 hover:text-white text-sm">Go back to FestFind</a>
         </div>
       </div>
     );
   }
+
+  const isMaintainer = user.role === "maintainer";
+  const visibleNav = isMaintainer ? NAV.filter((n) => n.id === "submissions") : NAV;
 
   const handleNav = (p: Page) => {
     setPage(p);
@@ -130,7 +137,7 @@ export function AdminApp() {
           </div>
         </div>
         <nav className="flex-1 overflow-y-auto p-2 space-y-0.5">
-          {NAV.map((n) => (
+          {visibleNav.map((n) => (
             <button
               key={n.id}
               onClick={() => handleNav(n.id)}

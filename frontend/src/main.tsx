@@ -6,7 +6,7 @@ import { AdminApp } from "./admin/AdminApp";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import "./styles/globals.css";
 
-const isAdminRoute = window.location.pathname === "/admin" || window.location.pathname.startsWith("/admin/");
+const isAdminRoute = window.location.pathname === "/hq-9f3k" || window.location.pathname.startsWith("/hq-9f3k/");
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

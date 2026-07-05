@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db, engine
 from app.models import User, Event, Announcement, FeatureFlag
-from app.routers.auth import get_admin_user
+from app.routers.auth import get_admin_user, get_maintainer_user
 from app.scraper.scheduler import get_scrape_status, run_scrape_job, _scrape_status
 
 router = APIRouter()
@@ -55,11 +55,16 @@ class UserOut(BaseModel):
     email: str
     name: str
     is_admin: bool
+    role: str = "user"
     is_active: bool
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class RoleUpdate(BaseModel):
+    role: str
 
 
 class EventAdminOut(BaseModel):
@@ -179,6 +184,38 @@ async def scraper_run(user: User = Depends(get_admin_user)):
 
 # ── User Management ─────────────────────────────────────────────────
 
+class TeamMemberCreate(BaseModel):
+    name: str
+    email: str
+    password: str
+    role: str
+
+
+@router.post("/users/create")
+def create_team_member(req: TeamMemberCreate, user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+    if req.role not in ("admin", "maintainer"):
+        raise HTTPException(400, "Role must be admin or maintainer")
+    if len(req.name.strip()) < 2:
+        raise HTTPException(400, "Name must be at least 2 characters")
+    if len(req.password) < 8:
+        raise HTTPException(400, "Password must be at least 8 characters")
+    existing = db.query(User).filter(User.email == req.email.lower()).first()
+    if existing:
+        raise HTTPException(400, "An account with this email already exists")
+    from app.routers.auth import _hash_password
+    new_user = User(
+        email=req.email.lower(),
+        name=req.name.strip(),
+        password_hash=_hash_password(req.password),
+        role=req.role,
+        is_admin=req.role == "admin",
+    )
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return {"id": new_user.id, "email": new_user.email, "name": new_user.name, "role": new_user.role}
+
+
 @router.get("/users", response_model=list[UserOut])
 def list_users(
     page: int = Query(1, ge=1),
@@ -187,7 +224,7 @@ def list_users(
     user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(User).filter(User.is_admin == True)
+    query = db.query(User).filter(User.role.in_(["admin", "maintainer"]))
     if search:
         query = query.filter(
             (User.name.ilike(f"%{search}%")) | (User.email.ilike(f"%{search}%"))
@@ -197,19 +234,22 @@ def list_users(
 
 @router.get("/users/count")
 def user_count(user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
-    return {"total": db.query(func.count(User.id)).filter(User.is_admin == True).scalar()}
+    return {"total": db.query(func.count(User.id)).filter(User.role.in_(["admin", "maintainer"])).scalar()}
 
 
-@router.put("/users/{user_id}/admin")
-def toggle_admin(user_id: str, user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+@router.put("/users/{user_id}/role")
+def set_role(user_id: str, req: RoleUpdate, user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+    if req.role not in ("admin", "maintainer", "user"):
+        raise HTTPException(400, "Role must be admin, maintainer, or user")
     if user_id == user.id:
-        raise HTTPException(400, "Cannot change your own admin status")
+        raise HTTPException(400, "Cannot change your own role")
     target = db.query(User).filter(User.id == user_id).first()
     if not target:
         raise HTTPException(404, "User not found")
-    target.is_admin = not target.is_admin
+    target.role = req.role
+    target.is_admin = req.role == "admin"
     db.commit()
-    return {"is_admin": target.is_admin}
+    return {"role": target.role, "is_admin": target.is_admin}
 
 
 @router.get("/users/search")
@@ -218,23 +258,26 @@ def search_users(
     user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
-    """Search all registered users (for promoting to admin)."""
+    """Search all registered users (for promoting to admin/maintainer)."""
     users = db.query(User).filter(
         (User.name.ilike(f"%{q}%")) | (User.email.ilike(f"%{q}%"))
     ).limit(20).all()
-    return [{"id": u.id, "name": u.name, "email": u.email, "is_admin": u.is_admin} for u in users]
+    return [{"id": u.id, "name": u.name, "email": u.email, "role": u.role} for u in users]
 
 
 @router.put("/users/{user_id}/promote")
-def promote_to_admin(user_id: str, user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def promote_to_role(user_id: str, req: RoleUpdate, user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+    if req.role not in ("admin", "maintainer"):
+        raise HTTPException(400, "Role must be admin or maintainer")
     target = db.query(User).filter(User.id == user_id).first()
     if not target:
         raise HTTPException(404, "User not found")
-    if target.is_admin:
-        raise HTTPException(400, "User is already an admin")
-    target.is_admin = True
+    if target.role == req.role:
+        raise HTTPException(400, f"User is already a {req.role}")
+    target.role = req.role
+    target.is_admin = req.role == "admin"
     db.commit()
-    return {"message": f"{target.name} promoted to admin"}
+    return {"message": f"{target.name} promoted to {req.role}"}
 
 
 @router.put("/users/{user_id}/active")
@@ -265,8 +308,8 @@ def delete_user(user_id: str, user: User = Depends(get_admin_user), db: Session 
 
 @router.get("/events/all")
 def admin_all_events(
-    limit: int = Query(500, ge=1, le=2000),
-    user: User = Depends(get_admin_user),
+    limit: int = Query(500, ge=1, le=5000),
+    user: User = Depends(get_maintainer_user),
     db: Session = Depends(get_db),
 ):
     events = db.query(Event).order_by(Event.created_at.desc()).limit(limit).all()
@@ -297,7 +340,7 @@ def admin_list_events(
     event_type: str | None = None,
     category: str | None = None,
     is_user_submitted: bool | None = None,
-    user: User = Depends(get_admin_user),
+    user: User = Depends(get_maintainer_user),
     db: Session = Depends(get_db),
 ):
     query = db.query(Event)
@@ -320,7 +363,7 @@ def admin_list_events(
 def admin_event_count(
     status: str | None = None,
     is_user_submitted: bool | None = None,
-    user: User = Depends(get_admin_user),
+    user: User = Depends(get_maintainer_user),
     db: Session = Depends(get_db),
 ):
     query = db.query(func.count(Event.id))
@@ -334,7 +377,7 @@ def admin_event_count(
 
 
 @router.put("/events/{event_id}/approve")
-def approve_event(event_id: str, user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def approve_event(event_id: str, user: User = Depends(get_maintainer_user), db: Session = Depends(get_db)):
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(404, "Event not found")
@@ -344,7 +387,7 @@ def approve_event(event_id: str, user: User = Depends(get_admin_user), db: Sessi
 
 
 @router.put("/events/{event_id}/reject")
-def reject_event(event_id: str, user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def reject_event(event_id: str, user: User = Depends(get_maintainer_user), db: Session = Depends(get_db)):
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(404, "Event not found")
@@ -354,7 +397,7 @@ def reject_event(event_id: str, user: User = Depends(get_admin_user), db: Sessio
 
 
 @router.delete("/events/{event_id}")
-def delete_event(event_id: str, user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def delete_event(event_id: str, user: User = Depends(get_maintainer_user), db: Session = Depends(get_db)):
     event = db.query(Event).filter(Event.id == event_id).first()
     if not event:
         raise HTTPException(404, "Event not found")
@@ -364,21 +407,21 @@ def delete_event(event_id: str, user: User = Depends(get_admin_user), db: Sessio
 
 
 @router.put("/events/bulk-approve")
-def bulk_approve(event_ids: list[str], user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def bulk_approve(event_ids: list[str], user: User = Depends(get_maintainer_user), db: Session = Depends(get_db)):
     count = db.query(Event).filter(Event.id.in_(event_ids)).update({Event.is_approved: True}, synchronize_session=False)
     db.commit()
     return {"message": f"{count} events approved"}
 
 
 @router.put("/events/bulk-reject")
-def bulk_reject(event_ids: list[str], user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def bulk_reject(event_ids: list[str], user: User = Depends(get_maintainer_user), db: Session = Depends(get_db)):
     count = db.query(Event).filter(Event.id.in_(event_ids)).update({Event.is_approved: False}, synchronize_session=False)
     db.commit()
     return {"message": f"{count} events rejected"}
 
 
 @router.post("/events/bulk-delete")
-def bulk_delete(event_ids: list[str], user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def bulk_delete(event_ids: list[str], user: User = Depends(get_maintainer_user), db: Session = Depends(get_db)):
     count = db.query(Event).filter(Event.id.in_(event_ids)).delete(synchronize_session=False)
     db.commit()
     return {"message": f"{count} events deleted"}

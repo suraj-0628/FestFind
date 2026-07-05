@@ -131,7 +131,7 @@ export async function forwardGeocode(q: string): Promise<{ lat: number | null; l
   return res.json();
 }
 
-export async function authRegister(name: string, email: string, password: string): Promise<{ token: string; user: { id: string; email: string; name: string; is_admin?: boolean } }> {
+export async function authRegister(name: string, email: string, password: string): Promise<{ token: string; user: { id: string; email: string; name: string; is_admin?: boolean; role?: string } }> {
   const res = await fetch(`${AUTH_BASE}/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -143,7 +143,7 @@ export async function authRegister(name: string, email: string, password: string
   return data;
 }
 
-export async function authLogin(email: string, password: string): Promise<{ token: string; user: { id: string; email: string; name: string; is_admin?: boolean } }> {
+export async function authLogin(email: string, password: string): Promise<{ token: string; user: { id: string; email: string; name: string; is_admin?: boolean; role?: string } }> {
   const res = await fetch(`${AUTH_BASE}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -155,7 +155,7 @@ export async function authLogin(email: string, password: string): Promise<{ toke
   return data;
 }
 
-export async function authMe(token: string): Promise<{ id: string; email: string; name: string; is_admin?: boolean }> {
+export async function authMe(token: string): Promise<{ id: string; email: string; name: string; is_admin?: boolean; role?: string }> {
   const res = await fetch(`${AUTH_BASE}/me`, {
     headers: { Authorization: `Bearer ${token}` },
   });

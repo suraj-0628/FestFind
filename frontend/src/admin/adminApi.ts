@@ -31,7 +31,10 @@ export const adminApi = {
   toggleActive: (t: string, id: string) => req(`/users/${id}/active`, t, { method: "PUT" }),
   deleteUser: (t: string, id: string) => req(`/users/${id}`, t, { method: "DELETE" }),
   searchUsers: (t: string, q: string) => req(`/users/search?q=${encodeURIComponent(q)}`, t),
-  promoteUser: (t: string, id: string) => req(`/users/${id}/promote`, t, { method: "PUT" }),
+  promoteUser: (t: string, id: string, role: string) => req(`/users/${id}/promote`, t, { method: "PUT", body: JSON.stringify({ role }) }),
+  setRole: (t: string, id: string, role: string) => req(`/users/${id}/role`, t, { method: "PUT", body: JSON.stringify({ role }) }),
+  createTeamMember: (t: string, name: string, email: string, password: string, role: string) =>
+    req("/users/create", t, { method: "POST", body: JSON.stringify({ name, email, password, role }) }),
 
   events: (t: string, p = 1, status = "", s = "", sz = 20, isUserSubmitted?: boolean) => {
     let url = `/events?page=${p}&page_size=${sz}&status=${status}&search=${encodeURIComponent(s)}`;

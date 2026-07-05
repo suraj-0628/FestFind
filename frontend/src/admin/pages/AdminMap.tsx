@@ -38,7 +38,7 @@ export function AdminMap({ token }: { token: string }) {
   useEffect(() => {
     setLoading(true);
     setError("");
-    adminApi.allEvents(token, 5000)
+    adminApi.allEvents(token, 2000)
       .then((data) => setEvents(data))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -92,7 +92,7 @@ export function AdminMap({ token }: { token: string }) {
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white"
+          className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white [&>option]:bg-[#0d0d14] [&>option]:text-white"
         >
           <option value="">All</option>
           <option value="pending">Pending Review</option>

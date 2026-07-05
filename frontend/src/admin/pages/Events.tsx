@@ -82,7 +82,7 @@ export function AdminEvents({ token, isUserSubmitted }: { token: string; isUserS
           <select
             value={filter}
             onChange={(e) => { setFilter(e.target.value); setPage(1); }}
-            className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white"
+            className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white [&>option]:bg-[#0d0d14] [&>option]:text-white"
           >
             <option value="">All</option>
             <option value="pending">Pending</option>

@@ -156,7 +156,7 @@ def register(req: RegisterRequest, request: Request, db: Session = Depends(get_d
     token = create_token(user.id)
     return AuthResponse(
         token=token,
-        user={"id": user.id, "email": user.email, "name": user.name, "is_admin": user.is_admin},
+        user={"id": user.id, "email": user.email, "name": user.name, "is_admin": user.is_admin, "role": user.role},
     )
 
 
@@ -170,13 +170,13 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
     token = create_token(user.id)
     return AuthResponse(
         token=token,
-        user={"id": user.id, "email": user.email, "name": user.name, "is_admin": user.is_admin},
+        user={"id": user.id, "email": user.email, "name": user.name, "is_admin": user.is_admin, "role": user.role},
     )
 
 
 @router.get("/me", response_model=dict)
 def get_me(user: User = Depends(get_current_user)):
-    return {"id": user.id, "email": user.email, "name": user.name, "is_admin": user.is_admin}
+    return {"id": user.id, "email": user.email, "name": user.name, "is_admin": user.is_admin, "role": user.role}
 
 
 @router.post("/logout")
@@ -198,8 +198,16 @@ def logout(authorization: str | None = Header(None)):
 
 
 def get_admin_user(user: User = Depends(get_current_user)) -> User:
-    if not user.is_admin:
+    if user.role != "admin":
         raise HTTPException(403, "Admin access required")
+    if not user.is_active:
+        raise HTTPException(403, "Account is deactivated")
+    return user
+
+
+def get_maintainer_user(user: User = Depends(get_current_user)) -> User:
+    if user.role not in ("admin", "maintainer"):
+        raise HTTPException(403, "Admin or maintainer access required")
     if not user.is_active:
         raise HTTPException(403, "Account is deactivated")
     return user

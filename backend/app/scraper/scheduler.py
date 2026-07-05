@@ -1,4 +1,6 @@
+import asyncio
 import logging
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -263,8 +265,7 @@ def start_scheduler():
     scheduler.start()
     logger.info("Scraper scheduler started (every 6 hours)")
 
-    import asyncio
     if not _scrape_status["is_running"]:
-        asyncio.create_task(run_scrape_job())
+        threading.Thread(target=lambda: asyncio.run(run_scrape_job()), daemon=True).start()
 
     return scheduler

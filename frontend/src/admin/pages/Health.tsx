@@ -47,7 +47,7 @@ export function AdminHealth({ token }: { token: string }) {
           <select
             value={logLines}
             onChange={(e) => setLogLines(Number(e.target.value))}
-            className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1 text-xs text-white"
+            className="bg-white/[0.04] border border-white/[0.08] rounded-lg px-2 py-1 text-xs text-white [&>option]:bg-[#0d0d14] [&>option]:text-white"
           >
             <option value={50}>50 lines</option>
             <option value={100}>100 lines</option>
