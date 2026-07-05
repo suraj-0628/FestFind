@@ -1,6 +1,15 @@
 import { useState, useEffect, useRef } from "react";
 import { adminApi } from "../adminApi";
 
+function parseTag(tags: string | null, key: string): string {
+  if (!tags) return "";
+  for (const part of tags.split(",")) {
+    const [k, ...rest] = part.split(":");
+    if (k === key) return rest.join(":");
+  }
+  return "";
+}
+
 export function AdminEvents({ token, isUserSubmitted }: { token: string; isUserSubmitted?: boolean }) {
   const [events, setEvents] = useState<any[]>([]);
   const [page, setPage] = useState(1);
@@ -113,10 +122,10 @@ export function AdminEvents({ token, isUserSubmitted }: { token: string; isUserS
                     <input type="checkbox" checked={selected.size === events.length && events.length > 0} onChange={selectAll} className="rounded" />
                   </th>
                   <th className="text-left p-3">Title</th>
+                  {isUserSubmitted && <th className="text-left p-3 hidden lg:table-cell">Contact</th>}
                   <th className="text-left p-3 hidden md:table-cell">City</th>
                   <th className="text-left p-3 hidden md:table-cell">Category</th>
                   <th className="text-left p-3">Status</th>
-                  <th className="text-left p-3 hidden lg:table-cell">Source</th>
                   <th className="text-right p-3">Actions</th>
                 </tr>
               </thead>
@@ -143,6 +152,11 @@ export function AdminEvents({ token, isUserSubmitted }: { token: string; isUserS
                         </div>
                       </div>
                     </td>
+                    {isUserSubmitted && (
+                      <td className="p-3 hidden lg:table-cell">
+                        <span className="text-xs text-slate-400">{parseTag(e.tags, "contact") || "-"}</span>
+                      </td>
+                    )}
                     <td className="p-3 text-slate-400 hidden md:table-cell">{e.city || "-"}</td>
                     <td className="p-3 text-slate-400 hidden md:table-cell">{e.category || "-"}</td>
                     <td className="p-3">
@@ -152,11 +166,6 @@ export function AdminEvents({ token, isUserSubmitted }: { token: string; isUserS
                           : "bg-yellow-500/20 text-yellow-400"
                       }`}>
                         {e.is_approved ? "Approved" : "Pending"}
-                      </span>
-                    </td>
-                    <td className="p-3 hidden lg:table-cell">
-                      <span className="text-xs text-slate-500">
-                        {e.is_scraped ? "Scraped" : e.is_user_submitted ? "User" : "-"}
                       </span>
                     </td>
                     <td className="p-3">

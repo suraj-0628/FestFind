@@ -79,6 +79,7 @@ class EventAdminOut(BaseModel):
     category: str | None = None
     organizer: str | None = None
     event_type: str = "physical"
+    tags: str | None = None
     is_scraped: bool = True
     is_user_submitted: bool = False
     is_approved: bool = True
