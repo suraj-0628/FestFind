@@ -270,6 +270,7 @@ def admin_list_events(
     search: str | None = None,
     event_type: str | None = None,
     category: str | None = None,
+    is_user_submitted: bool | None = None,
     user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
@@ -284,12 +285,15 @@ def admin_list_events(
         query = query.filter(Event.event_type == event_type)
     if category:
         query = query.filter(Event.category.ilike(f"%{category}%"))
+    if is_user_submitted is not None:
+        query = query.filter(Event.is_user_submitted == is_user_submitted)
     return query.order_by(Event.created_at.desc()).offset((page - 1) * page_size).limit(page_size).all()
 
 
 @router.get("/events/count")
 def admin_event_count(
     status: str | None = None,
+    is_user_submitted: bool | None = None,
     user: User = Depends(get_admin_user),
     db: Session = Depends(get_db),
 ):
@@ -298,6 +302,8 @@ def admin_event_count(
         query = query.filter(Event.is_approved == False)
     elif status == "approved":
         query = query.filter(Event.is_approved == True)
+    if is_user_submitted is not None:
+        query = query.filter(Event.is_user_submitted == is_user_submitted)
     return {"total": query.scalar()}
 
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { adminApi } from "../adminApi";
 
-export function AdminEvents({ token }: { token: string }) {
+export function AdminEvents({ token, isUserSubmitted }: { token: string; isUserSubmitted?: boolean }) {
   const [events, setEvents] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState("");
@@ -23,8 +23,8 @@ export function AdminEvents({ token }: { token: string }) {
   const refresh = () => {
     setLoading(true);
     Promise.all([
-      adminApi.events(token, page, filter, debouncedSearch),
-      adminApi.eventCount(token, filter),
+      adminApi.events(token, page, filter, debouncedSearch, 20, isUserSubmitted),
+      adminApi.eventCount(token, filter, isUserSubmitted),
     ]).then(([e, c]) => { setEvents(e); setTotal(c.total); setSelected(new Set()); }).finally(() => setLoading(false));
   };
 
