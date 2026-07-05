@@ -262,4 +262,9 @@ def start_scheduler():
     scheduler.add_job(run_scrape_job, "interval", hours=6)
     scheduler.start()
     logger.info("Scraper scheduler started (every 6 hours)")
+
+    import asyncio
+    if not _scrape_status["is_running"]:
+        asyncio.create_task(run_scrape_job())
+
     return scheduler
