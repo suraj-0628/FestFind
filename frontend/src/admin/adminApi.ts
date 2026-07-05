@@ -8,8 +8,9 @@ async function req(path: string, token: string, opts?: RequestInit) {
   const res = await fetch(`${API}${path}`, { ...opts, headers: authHeaders(token) });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    const err = text ? JSON.parse(text) : { detail: res.statusText };
-    throw new Error(err.detail || "Request failed");
+    let detail = res.statusText;
+    try { detail = text ? JSON.parse(text).detail || detail : detail; } catch {}
+    throw new Error(detail || "Request failed");
   }
   if (res.headers.get("content-type")?.includes("text/csv")) {
     return res.blob();
@@ -56,6 +57,7 @@ export const adminApi = {
 
   exportEvents: async (t: string) => {
     const res = await fetch(`${API}/export/events`, { headers: authHeaders(t) });
+    if (!res.ok) throw new Error("Export failed");
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -64,6 +66,7 @@ export const adminApi = {
   },
   exportUsers: async (t: string) => {
     const res = await fetch(`${API}/export/users`, { headers: authHeaders(t) });
+    if (!res.ok) throw new Error("Export failed");
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");

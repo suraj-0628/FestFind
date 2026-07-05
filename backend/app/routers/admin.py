@@ -509,6 +509,6 @@ def public_announcements(db: Session = Depends(get_db)):
 
 
 @router.get("/public/flags")
-def public_flags(user: User = Depends(get_admin_user), db: Session = Depends(get_db)):
+def public_flags(db: Session = Depends(get_db)):
     flags = db.query(FeatureFlag).all()
     return {f.key: f.value for f in flags}
