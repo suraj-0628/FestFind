@@ -45,14 +45,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Security headers
+# Security headers + CSRF check
 @app.middleware("http")
 async def security_headers(request, call_next):
+    # CSRF: reject state-changing requests without Origin or Referer matching allowed origins
+    if request.method in ("POST", "PUT", "DELETE", "PATCH"):
+        origin = request.headers.get("origin", "")
+        referer = request.headers.get("referer", "")
+        if origin and not any(origin.startswith(o) for o in ALLOWED_ORIGINS):
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"detail": "Invalid origin"}, status_code=403)
+        if referer and not any(referer.startswith(o) for o in ALLOWED_ORIGINS):
+            from fastapi.responses import JSONResponse
+            return JSONResponse({"detail": "Invalid referer"}, status_code=403)
+
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' https://*.basemaps.cartocdn.com https://*.openstreetmap.org data: blob:; connect-src 'self' https://nominatim.openstreetmap.org https://ip-api.com; font-src 'self'"
+    response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(self)"
     return response
 
 

@@ -82,7 +82,9 @@ export function SubmitEvent({ onClose, onSubmitted, token }: Props) {
     if (url.includes("google.com/maps") || url.includes("maps.app.goo.gl") || url.includes("goo.gl/maps")) {
       setResolving(true);
       try {
-        const res = await fetch(`/api/events/resolve-link?url=${encodeURIComponent(url)}`);
+        const resolveHeaders: Record<string, string> = {};
+        if (token) resolveHeaders["Authorization"] = `Bearer ${token}`;
+        const res = await fetch(`/api/events/resolve-link?url=${encodeURIComponent(url)}`, { headers: resolveHeaders });
         const data = await res.json();
         if (data.lat != null && data.lng != null) {
           setPinLat(data.lat);

@@ -12,7 +12,7 @@ from app.models import Event, User
 from app.schemas import EventCreate, EventList, EventOut
 from app.scraper.scheduler import get_scrape_status
 from app.routers.auth import get_current_user
-from app.rate_limit import rate_limit_events, rate_limit_resolve
+from app.rate_limit import rate_limit_events, rate_limit_resolve, rate_limit_geocode
 
 router = APIRouter()
 
@@ -130,7 +130,10 @@ def create_event(event: EventCreate, request: Request, user: User = Depends(get_
 
 
 @router.get("/reverse-geocode")
-def api_reverse_geocode(lat: float, lng: float):
+def api_reverse_geocode(lat: float, lng: float, request: Request):
+    rate_limit_geocode(request)
+    if not (-90 <= lat <= 90) or not (-180 <= lng <= 180):
+        raise HTTPException(400, "Invalid coordinates")
     from app.scraper.geocoder import reverse_geocode as _reverse_geocode
     result = _reverse_geocode(lat, lng)
     if not result:
@@ -139,8 +142,11 @@ def api_reverse_geocode(lat: float, lng: float):
 
 
 @router.get("/geocode")
-def api_geocode(q: str):
+def api_geocode(q: str, request: Request):
     """Forward geocode a location string (city, venue, etc.) via Nominatim."""
+    rate_limit_geocode(request)
+    if len(q) > 200:
+        raise HTTPException(400, "Query too long")
     import urllib.parse
     import json
     import urllib.request
@@ -157,7 +163,7 @@ def api_geocode(q: str):
 
 
 @router.get("/resolve-link")
-def api_resolve_link(url: str, request: Request):
+def api_resolve_link(url: str, request: Request, user: User = Depends(get_current_user)):
     """Resolve a Google Maps short link to exact coordinates using headless browser."""
     rate_limit_resolve(request)
     import subprocess

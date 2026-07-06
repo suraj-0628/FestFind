@@ -16,6 +16,8 @@ from app.models import Event
 
 logger = logging.getLogger(__name__)
 
+_scrape_lock = threading.Lock()
+
 _scrape_status = {
     "last_run": None,
     "last_duration_sec": 0,
@@ -30,15 +32,16 @@ _scrape_status = {
 
 
 def get_scrape_status() -> dict:
-    return {**_scrape_status, "history": _scrape_status["history"][-10:]}
+    with _scrape_lock:
+        return {**_scrape_status, "history": _scrape_status["history"][-10:]}
 
 
 async def run_scrape_job():
-    if _scrape_status["is_running"]:
-        logger.warning("Scrape already running, skipping")
-        return
-
-    _scrape_status["is_running"] = True
+    with _scrape_lock:
+        if _scrape_status["is_running"]:
+            logger.warning("Scrape already running, skipping")
+            return
+        _scrape_status["is_running"] = True
     start_time = time.time()
     logger.info("Starting scrape...")
 
@@ -230,20 +233,21 @@ async def run_scrape_job():
             db.close()
 
         duration = round(time.time() - start_time, 1)
-        _scrape_status["last_run"] = datetime.utcnow().isoformat()
-        _scrape_status["last_duration_sec"] = duration
-        _scrape_status["events_new"] = new_count
-        _scrape_status["events_updated"] = update_count
-        _scrape_status["events_skipped"] = skip_count
-        _scrape_status["errors"] = error_count
-        _scrape_status["history"].append({
-            "time": datetime.utcnow().isoformat(),
-            "found": len(all_events),
-            "new": new_count,
-            "skipped": skip_count,
-            "errors": error_count,
-            "duration_sec": duration,
-        })
+        with _scrape_lock:
+            _scrape_status["last_run"] = datetime.utcnow().isoformat()
+            _scrape_status["last_duration_sec"] = duration
+            _scrape_status["events_new"] = new_count
+            _scrape_status["events_updated"] = update_count
+            _scrape_status["events_skipped"] = skip_count
+            _scrape_status["errors"] = error_count
+            _scrape_status["history"].append({
+                "time": datetime.utcnow().isoformat(),
+                "found": len(all_events),
+                "new": new_count,
+                "skipped": skip_count,
+                "errors": error_count,
+                "duration_sec": duration,
+            })
 
         logger.info(
             "Scrape done: %d found, %d new, %d skipped, %d errors (%.1fs)",
@@ -252,9 +256,11 @@ async def run_scrape_job():
 
     except Exception as e:
         logger.error("Scrape failed: %s", e)
-        _scrape_status["errors"] += 1
+        with _scrape_lock:
+            _scrape_status["errors"] += 1
     finally:
-        _scrape_status["is_running"] = False
+        with _scrape_lock:
+            _scrape_status["is_running"] = False
 
 
 def start_scheduler():

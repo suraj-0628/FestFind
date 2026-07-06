@@ -43,3 +43,9 @@ def rate_limit_resolve(request: Request):
     """3 requests per minute per IP on resolve-link."""
     ip = request.client.host if request.client else "unknown"
     limiter.check(f"resolve:{ip}", limit=3, window=60)
+
+
+def rate_limit_geocode(request: Request):
+    """10 requests per minute per IP on geocode endpoints."""
+    ip = request.client.host if request.client else "unknown"
+    limiter.check(f"geocode:{ip}", limit=10, window=60)

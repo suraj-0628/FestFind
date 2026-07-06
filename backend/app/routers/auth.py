@@ -52,17 +52,32 @@ BLOCKED_DOMAINS = {
 }
 
 
-def _hash_password(password: str, salt: str | None = None) -> str:
+_LEGACY_ITERATIONS = 100_000
+_CURRENT_ITERATIONS = 600_000
+
+
+def _hash_password(password: str, salt: str | None = None, iterations: int = _CURRENT_ITERATIONS) -> str:
     if salt is None:
         salt = os.urandom(16).hex()
-    hashed = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)
+    hashed = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), iterations)
     return f"{salt}${hashed.hex()}"
 
 
-def _verify_password(password: str, stored_hash: str) -> bool:
-    salt, _ = stored_hash.split("$", 1)
-    computed = _hash_password(password, salt)
-    return hmac.compare_digest(computed, stored_hash)
+def _verify_password(password: str, stored_hash: str) -> tuple[bool, bool]:
+    """Returns (valid, needs_rehash)."""
+    try:
+        salt, _ = stored_hash.split("$", 1)
+    except ValueError:
+        return False, False
+    # Try current iterations first
+    computed = _hash_password(password, salt, _CURRENT_ITERATIONS)
+    if hmac.compare_digest(computed, stored_hash):
+        return True, False
+    # Try legacy iterations
+    computed_legacy = _hash_password(password, salt, _LEGACY_ITERATIONS)
+    if hmac.compare_digest(computed_legacy, stored_hash):
+        return True, True  # valid but needs rehash
+    return False, False
 
 
 def _is_valid_email(email: str) -> tuple[bool, str]:
@@ -164,8 +179,14 @@ def register(req: RegisterRequest, request: Request, db: Session = Depends(get_d
 def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
     rate_limit_auth(request)
     user = db.query(User).filter(User.email == req.email.lower()).first()
-    if not user or not _verify_password(req.password, user.password_hash):
+    if not user:
         raise HTTPException(401, "Invalid email or password")
+    valid, needs_rehash = _verify_password(req.password, user.password_hash)
+    if not valid:
+        raise HTTPException(401, "Invalid email or password")
+    if needs_rehash:
+        user.password_hash = _hash_password(req.password)
+        db.commit()
 
     token = create_token(user.id)
     return AuthResponse(
