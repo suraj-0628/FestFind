@@ -343,6 +343,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
           if (existing) existing.events.push(e);
           else groupedByVenue.push({ venue: v, events: [e] });
         }
+        for (const g of groupedByVenue) g.events.sort((a, b) => (a.start_date ?? "").localeCompare(b.start_date ?? ""));
 
         mk.bindPopup(multiEventPopup(groupedByVenue, venueName), { maxWidth: 320, maxHeight: 350 });
         mk.on("click", () => onSelectRef.current(evts[0]));
@@ -417,6 +418,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
           if (existing) existing.events.push(e);
           else groupedByVenue.push({ venue: v, events: [e] });
         }
+        for (const g of groupedByVenue) g.events.sort((a, b) => (a.start_date ?? "").localeCompare(b.start_date ?? ""));
 
         mk.bindPopup(multiEventPopup(groupedByVenue, venueName), { maxWidth: 320, maxHeight: 350 });
         mk.on("click", () => onSelectRef.current(gEvts[0]));
