@@ -2,6 +2,7 @@
 import json
 import logging
 import time
+from pathlib import Path
 
 import requests
 
@@ -9,6 +10,29 @@ logger = logging.getLogger(__name__)
 
 _session = requests.Session()
 _session.headers.update({"User-Agent": "CollegeFestHub/1.0 (contact@collegefesthub.com)"})
+
+_CACHE_PATH = Path(__file__).parent.parent.parent / "geocode_cache.json"
+_geocache: dict[str, tuple[float, float]] = {}
+
+
+def _load_cache():
+    global _geocache
+    if _geocache:
+        return
+    try:
+        if _CACHE_PATH.exists():
+            raw = json.loads(_CACHE_PATH.read_text())
+            _geocache = {k: (v[0], v[1]) for k, v in raw.items()}
+            logger.info("Loaded %d geocache entries", len(_geocache))
+    except Exception:
+        _geocache = {}
+
+
+def _save_cache():
+    try:
+        _CACHE_PATH.write_text(json.dumps(_geocache))
+    except Exception as e:
+        logger.warning("Failed to save geocache: %s", e)
 
 
 def _clean_venue(venue: str) -> str:
@@ -46,6 +70,8 @@ def _nominatim_query(q: str) -> tuple[float | None, float | None]:
 
 def geocode_venue(venue: str, city: str, state: str) -> tuple[float | None, float | None]:
     """Geocode using venue + city + state. Returns (lat, lng) or (None, None)."""
+    _load_cache()
+
     queries = []
     v = _clean_venue(venue)
     if v and city:
@@ -56,9 +82,16 @@ def geocode_venue(venue: str, city: str, state: str) -> tuple[float | None, floa
         queries.append(f"{city}, India")
 
     for q in queries:
+        if q in _geocache:
+            lat, lng = _geocache[q]
+            logger.info("Geocache hit: '%s' -> %.6f, %.6f", q[:60], lat, lng)
+            return lat, lng
+
         lat, lng = _nominatim_query(q)
         if lat and lng:
             logger.info("Geocoded '%s' -> %.6f, %.6f", q[:60], lat, lng)
+            _geocache[q] = (lat, lng)
+            _save_cache()
             return lat, lng
         time.sleep(1.5)
 

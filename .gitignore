@@ -16,6 +16,7 @@ dist/
 # Databases
 *.db
 *.sqlite3
+geocode_cache.json
 
 # Uploads
 backend/uploads/*
