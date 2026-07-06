@@ -1,19 +1,19 @@
 import { useState, useEffect } from "react";
 import { adminApi } from "../adminApi";
 
-export function AdminScraper ({ token }: { token: string }) {
+export function AdminScraper() {
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState(false);
 
-  const refresh = () => adminApi.scraperStatus(token).then(setStatus).finally(() => setLoading(false));
+  const refresh = () => adminApi.scraperStatus().then(setStatus).finally(() => setLoading(false));
 
-  useEffect(() => { refresh(); const i = setInterval(refresh, 5000); return () => clearInterval(i); }, [token]);
+  useEffect(() => { refresh(); const i = setInterval(refresh, 5000); return () => clearInterval(i); }, []);
 
   const handleRun = async () => {
     setRunning(true);
     try {
-      await adminApi.scraperRun(token);
+      await adminApi.scraperRun();
       setTimeout(refresh, 2000);
     } catch (e: any) {
       alert(e.message);

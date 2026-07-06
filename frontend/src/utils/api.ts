@@ -54,7 +54,7 @@ export async function fetchEvents(params?: {
   if (params?.search) sp.set("search", params.search);
 
   const url = `${API_BASE}/?${sp.toString()}`;
-  const res = await fetch(url);
+  const res = await fetch(url, { credentials: "include" });
   if (!res.ok) throw new Error("Failed to fetch events");
   const ct = res.headers.get("content-type") || "";
   if (!ct.includes("application/json")) throw new Error("Unexpected response format");
@@ -77,12 +77,11 @@ export async function createEvent(data: {
   organizer?: string;
   image_url?: string;
   event_type?: string;
-}, token?: string): Promise<EventData> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+}): Promise<EventData> {
   const res = await fetch(API_BASE + "/", {
     method: "POST",
-    headers,
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(data),
   });
   if (!res.ok) throw new Error("Failed to create event");
@@ -105,12 +104,10 @@ export function getEventStatus(e: EventData): "ongoing" | "upcoming" | "past" {
   return "past";
 }
 
-export async function uploadImage(file: File, token?: string): Promise<string> {
+export async function uploadImage(file: File): Promise<string> {
   const form = new FormData();
   form.append("file", file);
-  const headers: Record<string, string> = {};
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(UPLOAD_BASE + "/", { method: "POST", headers, body: form });
+  const res = await fetch(UPLOAD_BASE + "/", { method: "POST", credentials: "include", body: form });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: "Upload failed" }));
     throw new Error(err.detail || "Upload failed");
@@ -120,13 +117,13 @@ export async function uploadImage(file: File, token?: string): Promise<string> {
 }
 
 export async function reverseGeocode(lat: number, lng: number): Promise<{ venue: string; city: string; state: string; display: string }> {
-  const res = await fetch(`${API_BASE}/reverse-geocode?lat=${lat}&lng=${lng}`);
+  const res = await fetch(`${API_BASE}/reverse-geocode?lat=${lat}&lng=${lng}`, { credentials: "include" });
   if (!res.ok) throw new Error("Reverse geocode failed");
   return res.json();
 }
 
 export async function forwardGeocode(q: string): Promise<{ lat: number | null; lng: number | null; display: string }> {
-  const res = await fetch(`${API_BASE}/geocode?q=${encodeURIComponent(q)}`);
+  const res = await fetch(`${API_BASE}/geocode?q=${encodeURIComponent(q)}`, { credentials: "include" });
   if (!res.ok) throw new Error("Geocode failed");
   return res.json();
 }
@@ -134,6 +131,7 @@ export async function forwardGeocode(q: string): Promise<{ lat: number | null; l
 export async function authRegister(name: string, email: string, password: string): Promise<{ token: string; user: { id: string; email: string; name: string; is_admin?: boolean; role?: string } }> {
   const res = await fetch(`${AUTH_BASE}/register`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ name, email, password }),
   });
@@ -146,6 +144,7 @@ export async function authRegister(name: string, email: string, password: string
 export async function authLogin(email: string, password: string): Promise<{ token: string; user: { id: string; email: string; name: string; is_admin?: boolean; role?: string } }> {
   const res = await fetch(`${AUTH_BASE}/login`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email, password }),
   });
@@ -155,19 +154,14 @@ export async function authLogin(email: string, password: string): Promise<{ toke
   return data;
 }
 
-export async function authMe(token: string): Promise<{ id: string; email: string; name: string; is_admin?: boolean; role?: string }> {
-  const res = await fetch(`${AUTH_BASE}/me`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+export async function authMe(): Promise<{ id: string; email: string; name: string; is_admin?: boolean; role?: string }> {
+  const res = await fetch(`${AUTH_BASE}/me`, { credentials: "include" });
   if (!res.ok) throw new Error("Not authenticated");
   const text = await res.text();
   if (!text) throw new Error("Empty response from server");
   return JSON.parse(text);
 }
 
-export async function authLogout(token: string): Promise<void> {
-  await fetch(`${AUTH_BASE}/logout`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-  });
+export async function authLogout(): Promise<void> {
+  await fetch(`${AUTH_BASE}/logout`, { method: "POST", credentials: "include" });
 }

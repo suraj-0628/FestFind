@@ -1,0 +1,14 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": ["@dietrichgebert/ponytail"],
+  "rules": {
+    "common": ".opencode/rules/common",
+    "typescript": ".opencode/rules/typescript",
+    "python": ".opencode/rules/python"
+  },
+  "agents": {
+    "code-reviewer": ".opencode/agents/code-reviewer.md",
+    "security-reviewer": ".opencode/agents/security-reviewer.md",
+    "tdd-guide": ".opencode/agents/tdd-guide.md"
+  }
+}

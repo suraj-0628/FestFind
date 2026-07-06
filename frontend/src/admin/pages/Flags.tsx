@@ -1,15 +1,15 @@
 import { useState, useEffect } from "react";
 import { adminApi } from "../adminApi";
 
-export function AdminFlags({ token }: { token: string }) {
+export function AdminFlags() {
   const [flags, setFlags] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const refresh = () => adminApi.flags(token).then(setFlags).finally(() => setLoading(false));
-  useEffect(() => { refresh(); }, [token]);
+  const refresh = () => adminApi.flags().then(setFlags).finally(() => setLoading(false));
+  useEffect(() => { refresh(); }, []);
 
   const handleToggle = async (key: string, currentValue: boolean) => {
-    await adminApi.updateFlag(token, key, !currentValue);
+    await adminApi.updateFlag(key, !currentValue);
     refresh();
   };
 

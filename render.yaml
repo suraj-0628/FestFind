@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: festfind
+    runtime: python
+    buildCommand: cd frontend && npm install && npm run build && cp -r dist ../backend/static && cd ../backend && pip install -r requirements.txt
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+      - key: APP_ENV
+        value: production
+    healthCheckPath: /api/health

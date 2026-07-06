@@ -99,7 +99,7 @@ export function MapPicker({ lat, lng, onPick, autoSearchQuery }: Props) {
     leafletRef.current = map;
 
     // Detect user location and zoom in
-    const stored = localStorage.getItem("cfh_location");
+    const stored = sessionStorage.getItem("cfh_location");
     if (stored) {
       try {
         const data = JSON.parse(stored);

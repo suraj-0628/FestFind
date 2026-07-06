@@ -34,7 +34,7 @@ export function LoginPage() {
     "w-full rounded-lg glass-light border border-transparent px-3 py-2.5 text-sm text-white placeholder-slate-500 outline-none focus:border-neon-blue transition min-h-[44px]";
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center px-4 bg-[#0a0a0f]">
+    <div className="h-full flex items-center justify-center px-4 bg-[#0a0a0f]">
       <div className="w-full max-w-sm">
         <div className="flex flex-col items-center mb-8">
           <FestFindLogo size={48} />

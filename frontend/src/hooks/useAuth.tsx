@@ -11,7 +11,6 @@ interface User {
 
 interface AuthState {
   user: User | null;
-  token: string | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
@@ -20,50 +19,34 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | null>(null);
 
-const TOKEN_KEY = "festfind_token";
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(sessionStorage.getItem(TOKEN_KEY));
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-    authMe(token)
+    authMe()
       .then((u) => setUser(u))
-      .catch(() => {
-        sessionStorage.removeItem(TOKEN_KEY);
-        setToken(null);
-      })
+      .catch(() => setUser(null))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, []);
 
   const login = async (email: string, password: string) => {
     const res = await authLogin(email, password);
-    sessionStorage.setItem(TOKEN_KEY, res.token);
-    setToken(res.token);
     setUser(res.user);
   };
 
   const register = async (name: string, email: string, password: string) => {
     const res = await authRegister(name, email, password);
-    sessionStorage.setItem(TOKEN_KEY, res.token);
-    setToken(res.token);
     setUser(res.user);
   };
 
   const logout = () => {
-    if (token) authLogout(token).catch(() => {});
-    sessionStorage.removeItem(TOKEN_KEY);
-    setToken(null);
+    authLogout().catch(() => {});
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

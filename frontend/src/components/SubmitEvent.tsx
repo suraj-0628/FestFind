@@ -9,14 +9,13 @@ const STATES = ["Andhra Pradesh","Arunachal Pradesh","Assam","Bihar","Chhattisga
 interface Props {
   onClose: () => void;
   onSubmitted?: () => void;
-  token?: string;
 }
 
 function countWords(s: string): number {
   return s.trim() ? s.trim().split(/\s+/).length : 0;
 }
 
-export function SubmitEvent({ onClose, onSubmitted, token }: Props) {
+export function SubmitEvent({ onClose, onSubmitted }: Props) {
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -83,8 +82,7 @@ export function SubmitEvent({ onClose, onSubmitted, token }: Props) {
       setResolving(true);
       try {
         const resolveHeaders: Record<string, string> = {};
-        if (token) resolveHeaders["Authorization"] = `Bearer ${token}`;
-        const res = await fetch(`/api/events/resolve-link?url=${encodeURIComponent(url)}`, { headers: resolveHeaders });
+        const res = await fetch(`/api/events/resolve-link?url=${encodeURIComponent(url)}`, { credentials: "include", headers: resolveHeaders });
         const data = await res.json();
         if (data.lat != null && data.lng != null) {
           setPinLat(data.lat);
@@ -222,7 +220,7 @@ export function SubmitEvent({ onClose, onSubmitted, token }: Props) {
     setUploadError(null);
     setUploading(true);
     try {
-      const url = await uploadImage(file, token);
+      const url = await uploadImage(file);
       update("image_url", url);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
@@ -239,7 +237,7 @@ export function SubmitEvent({ onClose, onSubmitted, token }: Props) {
     setUploadError(null);
     setUploading(true);
     try {
-      const url = await uploadImage(file, token);
+      const url = await uploadImage(file);
       update("image_url", url);
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
@@ -277,7 +275,7 @@ export function SubmitEvent({ onClose, onSubmitted, token }: Props) {
         payload.longitude = pinLng;
       }
 
-      await createEvent(payload as Parameters<typeof createEvent>[0], token);
+      await createEvent(payload as Parameters<typeof createEvent>[0]);
       setResult("success");
       onSubmitted?.();
     } catch {

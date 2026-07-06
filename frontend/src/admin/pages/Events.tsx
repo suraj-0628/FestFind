@@ -10,7 +10,7 @@ function parseTag(tags: string | null, key: string): string {
   return "";
 }
 
-export function AdminEvents({ token, isUserSubmitted }: { token: string; isUserSubmitted?: boolean }) {
+export function AdminEvents({ isUserSubmitted }: { isUserSubmitted?: boolean }) {
   const [events, setEvents] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [filter, setFilter] = useState("");
@@ -33,12 +33,12 @@ export function AdminEvents({ token, isUserSubmitted }: { token: string; isUserS
   const refresh = () => {
     setLoading(true);
     Promise.all([
-      adminApi.events(token, page, filter, debouncedSearch, 20, isUserSubmitted),
-      adminApi.eventCount(token, filter, isUserSubmitted),
+      adminApi.events(page, filter, debouncedSearch, 20, isUserSubmitted),
+      adminApi.eventCount(filter, isUserSubmitted),
     ]).then(([e, c]) => { setEvents(e); setTotal(c.total); setSelected(new Set()); }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { refresh(); }, [token, page, filter, debouncedSearch]);
+  useEffect(() => { refresh(); }, [page, filter, debouncedSearch]);
 
   const toggleSelect = (id: string) => {
     const next = new Set(selected);
@@ -61,9 +61,9 @@ export function AdminEvents({ token, isUserSubmitted }: { token: string; isUserS
     if (action === "reject" && !confirm(`Reject ${ids.length} events?`)) return;
     setBulkLoading(true);
     try {
-      if (action === "approve") await adminApi.bulkApprove(token, ids);
-      if (action === "reject") await adminApi.bulkReject(token, ids);
-      if (action === "delete") await adminApi.bulkDelete(token, ids);
+      if (action === "approve") await adminApi.bulkApprove(ids);
+      if (action === "reject") await adminApi.bulkReject(ids);
+      if (action === "delete") await adminApi.bulkDelete(ids);
       refresh();
     } catch (e: any) {
       alert(e.message || "Bulk action failed");
@@ -72,7 +72,7 @@ export function AdminEvents({ token, isUserSubmitted }: { token: string; isUserS
     }
   };
 
-  const handleExport = () => adminApi.exportEvents(token);
+  const handleExport = () => adminApi.exportEvents();
 
   return (
     <div className="p-4 md:p-6 space-y-4">
@@ -171,12 +171,12 @@ export function AdminEvents({ token, isUserSubmitted }: { token: string; isUserS
                     <td className="p-3">
                       <div className="flex items-center justify-end gap-1">
                         {!e.is_approved && (
-                          <button onClick={() => adminApi.approveEvent(token, e.id).then(refresh)} className="text-xs px-2 py-1 text-green-400 hover:bg-green-500/10 rounded">Approve</button>
+                          <button onClick={() => adminApi.approveEvent(e.id).then(refresh)} className="text-xs px-2 py-1 text-green-400 hover:bg-green-500/10 rounded">Approve</button>
                         )}
                         {e.is_approved && (
-                          <button onClick={() => adminApi.rejectEvent(token, e.id).then(refresh)} className="text-xs px-2 py-1 text-yellow-400 hover:bg-yellow-500/10 rounded">Reject</button>
+                          <button onClick={() => adminApi.rejectEvent(e.id).then(refresh)} className="text-xs px-2 py-1 text-yellow-400 hover:bg-yellow-500/10 rounded">Reject</button>
                         )}
-                        <button onClick={() => confirm(`Delete "${e.title}"?`) && adminApi.deleteEvent(token, e.id).then(refresh)} className="text-xs px-2 py-1 text-red-400 hover:bg-red-500/10 rounded">Del</button>
+                        <button onClick={() => confirm(`Delete "${e.title}"?`) && adminApi.deleteEvent(e.id).then(refresh)} className="text-xs px-2 py-1 text-red-400 hover:bg-red-500/10 rounded">Del</button>
                         {e.source_url && (
                           <a href={e.source_url} target="_blank" rel="noopener noreferrer" className="text-xs px-2 py-1 text-slate-500 hover:text-white rounded">Link</a>
                         )}

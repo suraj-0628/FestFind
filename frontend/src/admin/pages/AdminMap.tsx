@@ -7,7 +7,7 @@ function esc(s: string): string {
   return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 }
 
-export function AdminMap({ token }: { token: string }) {
+export function AdminMap() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const [events, setEvents] = useState<any[]>([]);
@@ -38,11 +38,11 @@ export function AdminMap({ token }: { token: string }) {
   useEffect(() => {
     setLoading(true);
     setError("");
-    adminApi.allEvents(token, 2000)
+    adminApi.allEvents(2000)
       .then((data) => setEvents(data))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [token]);
+  }, []);
 
   useEffect(() => {
     if (!mapInstance.current) return;

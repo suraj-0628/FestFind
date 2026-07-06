@@ -1,18 +1,18 @@
 import { useState, useEffect } from "react";
 import { adminApi } from "../adminApi";
 
-export function AdminAnnouncements({ token }: { token: string }) {
+export function AdminAnnouncements() {
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
-  const refresh = () => adminApi.announcements(token).then(setAnnouncements).finally(() => setLoading(false));
-  useEffect(() => { refresh(); }, [token]);
+  const refresh = () => adminApi.announcements().then(setAnnouncements).finally(() => setLoading(false));
+  useEffect(() => { refresh(); }, []);
 
   const handleCreate = async () => {
     if (!title.trim() || !message.trim()) return;
-    await adminApi.createAnnouncement(token, title, message);
+    await adminApi.createAnnouncement(title, message);
     setTitle(""); setMessage("");
     refresh();
   };
@@ -65,10 +65,10 @@ export function AdminAnnouncements({ token }: { token: string }) {
                 <div className="text-xs text-slate-600 mt-1">{new Date(a.created_at).toLocaleString()}</div>
               </div>
               <div className="flex items-center gap-1 shrink-0">
-                <button onClick={() => adminApi.toggleAnnouncement(token, a.id).then(refresh)} className="text-xs px-2 py-1 text-slate-400 hover:text-white hover:bg-white/[0.06] rounded">
+                <button onClick={() => adminApi.toggleAnnouncement(a.id).then(refresh)} className="text-xs px-2 py-1 text-slate-400 hover:text-white hover:bg-white/[0.06] rounded">
                   {a.is_active ? "Hide" : "Show"}
                 </button>
-                <button onClick={() => confirm("Delete?") && adminApi.deleteAnnouncement(token, a.id).then(refresh)} className="text-xs px-2 py-1 text-red-400 hover:bg-red-500/10 rounded">
+                <button onClick={() => confirm("Delete?") && adminApi.deleteAnnouncement(a.id).then(refresh)} className="text-xs px-2 py-1 text-red-400 hover:bg-red-500/10 rounded">
                   Del
                 </button>
               </div>

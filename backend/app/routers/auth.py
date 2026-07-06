@@ -6,7 +6,7 @@ import time
 from datetime import datetime, timedelta, timezone
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, Header, Request
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Header, Request, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -14,6 +14,8 @@ from app.config import settings
 from app.database import get_db
 from app.models import User
 from app.rate_limit import rate_limit_auth
+
+TOKEN_COOKIE = "ff_token"
 
 router = APIRouter()
 
@@ -31,6 +33,18 @@ def _cleanup_blacklist():
 
 def _revoke_token(jti: str, expires_at: float):
     _token_blacklist[jti] = expires_at
+
+
+def _set_token_cookie(response: Response, token: str):
+    response.set_cookie(
+        TOKEN_COOKIE, token,
+        max_age=settings.jwt_expire_hours * 3600,
+        httponly=True, samesite="lax", secure=False, path="/",
+    )
+
+
+def _clear_token_cookie(response: Response):
+    response.delete_cookie(TOKEN_COOKIE, path="/")
 
 # Domains allowed for registration
 ALLOWED_EMAIL_DOMAINS = {
@@ -104,10 +118,19 @@ def create_token(user_id: str) -> str:
     return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 
-def get_current_user(authorization: str | None = Header(None), db: Session = Depends(get_db)) -> User:
-    if not authorization or not authorization.startswith("Bearer "):
+def get_current_user(
+    authorization: str | None = Header(None),
+    ff_token: str | None = Cookie(None),
+    db: Session = Depends(get_db),
+) -> User:
+    token = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ", 1)[1]
+    elif ff_token:
+        token = ff_token
+
+    if not token:
         raise HTTPException(401, "Not authenticated")
-    token = authorization.split(" ", 1)[1]
     try:
         payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
         user_id = payload.get("sub")
@@ -144,7 +167,7 @@ class AuthResponse(BaseModel):
 
 
 @router.post("/register", response_model=AuthResponse)
-def register(req: RegisterRequest, request: Request, db: Session = Depends(get_db)):
+def register(req: RegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     rate_limit_auth(request)
     if len(req.name.strip()) < 2:
         raise HTTPException(400, "Name must be at least 2 characters")
@@ -169,6 +192,7 @@ def register(req: RegisterRequest, request: Request, db: Session = Depends(get_d
     db.refresh(user)
 
     token = create_token(user.id)
+    _set_token_cookie(response, token)
     return AuthResponse(
         token=token,
         user={"id": user.id, "email": user.email, "name": user.name, "is_admin": user.is_admin, "role": user.role},
@@ -176,7 +200,7 @@ def register(req: RegisterRequest, request: Request, db: Session = Depends(get_d
 
 
 @router.post("/login", response_model=AuthResponse)
-def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
+def login(req: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)):
     rate_limit_auth(request)
     user = db.query(User).filter(User.email == req.email.lower()).first()
     if not user:
@@ -189,6 +213,7 @@ def login(req: LoginRequest, request: Request, db: Session = Depends(get_db)):
         db.commit()
 
     token = create_token(user.id)
+    _set_token_cookie(response, token)
     return AuthResponse(
         token=token,
         user={"id": user.id, "email": user.email, "name": user.name, "is_admin": user.is_admin, "role": user.role},
@@ -201,20 +226,24 @@ def get_me(user: User = Depends(get_current_user)):
 
 
 @router.post("/logout")
-def logout(authorization: str | None = Header(None)):
-    """Revoke current token (in-memory blacklist)."""
+def logout(response: Response, authorization: str | None = Header(None), ff_token: str | None = Cookie(None)):
+    """Revoke current token (in-memory blacklist) and clear cookie."""
     _cleanup_blacklist()
-    if not authorization or not authorization.startswith("Bearer "):
-        return {"ok": True}
-    token = authorization.split(" ", 1)[1]
-    try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm], options={"verify_exp": False})
-        jti = payload.get("jti")
-        exp = payload.get("exp", 0)
-        if jti:
-            _revoke_token(jti, exp)
-    except jwt.InvalidTokenError:
-        pass
+    _clear_token_cookie(response)
+    token = None
+    if authorization and authorization.startswith("Bearer "):
+        token = authorization.split(" ", 1)[1]
+    elif ff_token:
+        token = ff_token
+    if token:
+        try:
+            payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm], options={"verify_exp": False})
+            jti = payload.get("jti")
+            exp = payload.get("exp", 0)
+            if jti:
+                _revoke_token(jti, exp)
+        except jwt.InvalidTokenError:
+            pass
     return {"ok": True}
 
 

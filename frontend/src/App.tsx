@@ -36,7 +36,7 @@ export default function App() {
 }
 
 function AppContent() {
-  const { user, token, logout } = useAuth();
+  const { user, logout } = useAuth();
   const [tab, setTab] = useState<Tab>("map");
   const [search, setSearch] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
@@ -318,13 +318,13 @@ function AppContent() {
           </div>
         )}
         {tab === "login" && (
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-hidden">
             <LoginPage />
           </div>
         )}
         {tab === "submit" && user && (
           <div id="panel-submit" role="tabpanel" aria-label="Host an event" className="flex-1 overflow-y-auto">
-            <SubmitEvent onClose={() => setTab("map")} onSubmitted={() => setRefreshKey((k) => k + 1)} token={token || undefined} />
+            <SubmitEvent onClose={() => setTab("map")} onSubmitted={() => setRefreshKey((k) => k + 1)} />
           </div>
         )}
       </main>

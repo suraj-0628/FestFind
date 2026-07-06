@@ -47,11 +47,11 @@ interface StoredLocation {
 
 function loadStored(): StoredLocation | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const data = JSON.parse(raw);
     if (Date.now() - data.timestamp > 7 * 24 * 60 * 60 * 1000) {
-      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(STORAGE_KEY);
       return null;
     }
     return data;
@@ -61,7 +61,7 @@ function loadStored(): StoredLocation | null {
 }
 
 function storeLocation(lat: number, lng: number, city: string, state: string) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify({ lat, lng, city, state, timestamp: Date.now() }));
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ lat, lng, city, state, timestamp: Date.now() }));
 }
 
 async function reverseGeocode(lat: number, lng: number): Promise<{ city: string; state: string }> {

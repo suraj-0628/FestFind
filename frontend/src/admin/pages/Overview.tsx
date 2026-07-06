@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { adminApi } from "../adminApi";
 
-export function AdminOverview({ token }: { token: string }) {
+export function AdminOverview() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    adminApi.overview(token).then(setData).finally(() => setLoading(false));
-  }, [token]);
+    adminApi.overview().then(setData).finally(() => setLoading(false));
+  }, []);
 
   if (loading) return <div className="p-6 text-slate-400">Loading...</div>;
   if (!data) return <div className="p-6 text-red-400">Failed to load</div>;

@@ -1,11 +1,7 @@
 const API = "/api/admin";
 
-function authHeaders(token: string) {
-  return { "Content-Type": "application/json", Authorization: `Bearer ${token}` };
-}
-
-async function req(path: string, token: string, opts?: RequestInit) {
-  const res = await fetch(`${API}${path}`, { ...opts, headers: authHeaders(token) });
+async function req(path: string, opts?: RequestInit) {
+  const res = await fetch(`${API}${path}`, { ...opts, credentials: "include" });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     let detail = res.statusText;
@@ -20,55 +16,55 @@ async function req(path: string, token: string, opts?: RequestInit) {
 }
 
 export const adminApi = {
-  overview: (t: string) => req("/overview", t),
-  scraperStatus: (t: string) => req("/scraper/status", t),
-  scraperRun: (t: string) => req("/scraper/run", t, { method: "POST" }),
+  overview: () => req("/overview"),
+  scraperStatus: () => req("/scraper/status"),
+  scraperRun: () => req("/scraper/run", { method: "POST" }),
 
-  users: (t: string, p = 1, s = "", sz = 20) =>
-    req(`/users?page=${p}&page_size=${sz}&search=${encodeURIComponent(s)}`, t),
-  userCount: (t: string) => req("/users/count", t),
-  toggleAdmin: (t: string, id: string) => req(`/users/${id}/admin`, t, { method: "PUT" }),
-  toggleActive: (t: string, id: string) => req(`/users/${id}/active`, t, { method: "PUT" }),
-  deleteUser: (t: string, id: string) => req(`/users/${id}`, t, { method: "DELETE" }),
-  searchUsers: (t: string, q: string) => req(`/users/search?q=${encodeURIComponent(q)}`, t),
-  promoteUser: (t: string, id: string, role: string) => req(`/users/${id}/promote`, t, { method: "PUT", body: JSON.stringify({ role }) }),
-  setRole: (t: string, id: string, role: string) => req(`/users/${id}/role`, t, { method: "PUT", body: JSON.stringify({ role }) }),
-  createTeamMember: (t: string, name: string, email: string, password: string, role: string) =>
-    req("/users/create", t, { method: "POST", body: JSON.stringify({ name, email, password, role }) }),
+  users: (p = 1, s = "", sz = 20) =>
+    req(`/users?page=${p}&page_size=${sz}&search=${encodeURIComponent(s)}`),
+  userCount: () => req("/users/count"),
+  toggleAdmin: (id: string) => req(`/users/${id}/admin`, { method: "PUT" }),
+  toggleActive: (id: string) => req(`/users/${id}/active`, { method: "PUT" }),
+  deleteUser: (id: string) => req(`/users/${id}`, { method: "DELETE" }),
+  searchUsers: (q: string) => req(`/users/search?q=${encodeURIComponent(q)}`),
+  promoteUser: (id: string, role: string) => req(`/users/${id}/promote`, { method: "PUT", body: JSON.stringify({ role }) }),
+  setRole: (id: string, role: string) => req(`/users/${id}/role`, { method: "PUT", body: JSON.stringify({ role }) }),
+  createTeamMember: (name: string, email: string, password: string, role: string) =>
+    req("/users/create", { method: "POST", body: JSON.stringify({ name, email, password, role }) }),
 
-  events: (t: string, p = 1, status = "", s = "", sz = 20, isUserSubmitted?: boolean) => {
+  events: (p = 1, status = "", s = "", sz = 20, isUserSubmitted?: boolean) => {
     let url = `/events?page=${p}&page_size=${sz}&status=${status}&search=${encodeURIComponent(s)}`;
     if (isUserSubmitted !== undefined) url += `&is_user_submitted=${isUserSubmitted}`;
-    return req(url, t);
+    return req(url);
   },
-  allEvents: (t: string, limit = 500) => req(`/events/all?limit=${limit}`, t),
-  eventCount: (t: string, status = "", isUserSubmitted?: boolean) => {
+  allEvents: (limit = 500) => req(`/events/all?limit=${limit}`),
+  eventCount: (status = "", isUserSubmitted?: boolean) => {
     let url = `/events/count?status=${status}`;
     if (isUserSubmitted !== undefined) url += `&is_user_submitted=${isUserSubmitted}`;
-    return req(url, t);
+    return req(url);
   },
-  approveEvent: (t: string, id: string) => req(`/events/${id}/approve`, t, { method: "PUT" }),
-  rejectEvent: (t: string, id: string) => req(`/events/${id}/reject`, t, { method: "PUT" }),
-  deleteEvent: (t: string, id: string) => req(`/events/${id}`, t, { method: "DELETE" }),
-  bulkApprove: (t: string, ids: string[]) => req("/events/bulk-approve", t, { method: "PUT", body: JSON.stringify(ids) }),
-  bulkReject: (t: string, ids: string[]) => req("/events/bulk-reject", t, { method: "PUT", body: JSON.stringify(ids) }),
-  bulkDelete: (t: string, ids: string[]) => req("/events/bulk-delete", t, { method: "POST", body: JSON.stringify(ids) }),
+  approveEvent: (id: string) => req(`/events/${id}/approve`, { method: "PUT" }),
+  rejectEvent: (id: string) => req(`/events/${id}/reject`, { method: "PUT" }),
+  deleteEvent: (id: string) => req(`/events/${id}`, { method: "DELETE" }),
+  bulkApprove: (ids: string[]) => req("/events/bulk-approve", { method: "PUT", body: JSON.stringify(ids) }),
+  bulkReject: (ids: string[]) => req("/events/bulk-reject", { method: "PUT", body: JSON.stringify(ids) }),
+  bulkDelete: (ids: string[]) => req("/events/bulk-delete", { method: "POST", body: JSON.stringify(ids) }),
 
-  announcements: (t: string) => req("/announcements", t),
-  createAnnouncement: (t: string, title: string, message: string) =>
-    req("/announcements", t, { method: "POST", body: JSON.stringify({ title, message }) }),
-  toggleAnnouncement: (t: string, id: string) => req(`/announcements/${id}/toggle`, t, { method: "PUT" }),
-  deleteAnnouncement: (t: string, id: string) => req(`/announcements/${id}`, t, { method: "DELETE" }),
+  announcements: () => req("/announcements"),
+  createAnnouncement: (title: string, message: string) =>
+    req("/announcements", { method: "POST", body: JSON.stringify({ title, message }) }),
+  toggleAnnouncement: (id: string) => req(`/announcements/${id}/toggle`, { method: "PUT" }),
+  deleteAnnouncement: (id: string) => req(`/announcements/${id}`, { method: "DELETE" }),
 
-  flags: (t: string) => req("/flags", t),
-  updateFlag: (t: string, key: string, value: boolean) =>
-    req(`/flags/${key}`, t, { method: "PUT", body: JSON.stringify({ value }) }),
+  flags: () => req("/flags"),
+  updateFlag: (key: string, value: boolean) =>
+    req(`/flags/${key}`, { method: "PUT", body: JSON.stringify({ value }) }),
 
-  systemHealth: (t: string) => req("/system/health", t),
-  systemLogs: (t: string, lines = 100) => req(`/system/logs?lines=${lines}`, t),
+  systemHealth: () => req("/system/health"),
+  systemLogs: (lines = 100) => req(`/system/logs?lines=${lines}`),
 
-  exportEvents: async (t: string) => {
-    const res = await fetch(`${API}/export/events`, { headers: authHeaders(t) });
+  exportEvents: async () => {
+    const res = await fetch(`${API}/export/events`, { credentials: "include" });
     if (!res.ok) throw new Error("Export failed");
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
@@ -76,8 +72,8 @@ export const adminApi = {
     a.href = url; a.download = "festfind_events.csv"; a.click();
     URL.revokeObjectURL(url);
   },
-  exportUsers: async (t: string) => {
-    const res = await fetch(`${API}/export/users`, { headers: authHeaders(t) });
+  exportUsers: async () => {
+    const res = await fetch(`${API}/export/users`, { credentials: "include" });
     if (!res.ok) throw new Error("Export failed");
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);

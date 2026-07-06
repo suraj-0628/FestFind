@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { adminApi } from "../adminApi";
 
-export function AdminUsers({ token }: { token: string }) {
+export function AdminUsers() {
   const [users, setUsers] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -27,19 +27,19 @@ export function AdminUsers({ token }: { token: string }) {
   const refresh = () => {
     setLoading(true);
     Promise.all([
-      adminApi.users(token, page, debouncedSearch),
-      adminApi.userCount(token),
+      adminApi.users(page, debouncedSearch),
+      adminApi.userCount(),
     ]).then(([u, c]) => { setUsers(u); setTotal(c.total); }).finally(() => setLoading(false));
   };
 
-  useEffect(() => { refresh(); }, [token, page, debouncedSearch]);
+  useEffect(() => { refresh(); }, [page, debouncedSearch]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
     setCreating(true);
     try {
-      await adminApi.createTeamMember(token, formName, formEmail, formPass, formRole);
+      await adminApi.createTeamMember(formName, formEmail, formPass, formRole);
       setShowForm(false);
       setFormName(""); setFormEmail(""); setFormPass(""); setFormRole("maintainer");
       refresh();
@@ -51,7 +51,7 @@ export function AdminUsers({ token }: { token: string }) {
   };
 
   const handleRoleChange = (userId: string, newRole: string) => {
-    adminApi.setRole(token, userId, newRole)
+    adminApi.setRole(userId, newRole)
       .then(refresh)
       .catch((e: any) => alert(e.message || "Failed"));
   };
@@ -144,7 +144,7 @@ export function AdminUsers({ token }: { token: string }) {
                     </td>
                     <td className="p-3">
                       <div className="flex items-center justify-end gap-1">
-                        <ActionBtn label={u.is_active ? "Disable" : "Enable"} onClick={() => adminApi.toggleActive(token, u.id).then(refresh).catch((e: any) => alert(e.message || "Failed"))} />
+                        <ActionBtn label={u.is_active ? "Disable" : "Enable"} onClick={() => adminApi.toggleActive(u.id).then(refresh).catch((e: any) => alert(e.message || "Failed"))} />
                       </div>
                     </td>
                   </tr>

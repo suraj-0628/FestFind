@@ -26,7 +26,7 @@ const NAV = [
 ];
 
 export function AdminApp() {
-  const { user, token, logout, loading, login } = useAuth();
+  const { user, logout, loading, login } = useAuth();
   const [page, setPage] = useState<Page>("overview");
   const isDesktop = useMediaQuery("(min-width: 768px)");
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -175,15 +175,15 @@ export function AdminApp() {
         </div>
 
         <main className="flex-1 overflow-y-auto">
-          {page === "overview" && <AdminOverview token={token!} />}
-          {page === "scraper" && <AdminScraper token={token!} />}
-          {page === "events" && <AdminEvents token={token!} />}
-          {page === "submissions" && <AdminEvents token={token!} isUserSubmitted={true} />}
-          {page === "users" && <AdminUsers token={token!} />}
-          {page === "health" && <AdminHealth token={token!} />}
-          {page === "announcements" && <AdminAnnouncements token={token!} />}
-          {page === "flags" && <AdminFlags token={token!} />}
-          {page === "map" && <AdminMap token={token!} />}
+          {page === "overview" && <AdminOverview />}
+          {page === "scraper" && <AdminScraper />}
+          {page === "events" && <AdminEvents />}
+          {page === "submissions" && <AdminEvents isUserSubmitted={true} />}
+          {page === "users" && <AdminUsers />}
+          {page === "health" && <AdminHealth />}
+          {page === "announcements" && <AdminAnnouncements />}
+          {page === "flags" && <AdminFlags />}
+          {page === "map" && <AdminMap />}
         </main>
       </div>
     </div>

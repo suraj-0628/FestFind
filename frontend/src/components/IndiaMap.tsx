@@ -225,6 +225,8 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
   const mapRef = useRef<HTMLDivElement>(null);
   const map = useRef<L.Map | null>(null);
   const dynLayer = useRef<L.LayerGroup | null>(null);
+  const moveEndCb = useRef<(() => void) | null>(null);
+  const generationRef = useRef(0);
   const userMarkerRef = useRef<L.Marker | null>(null);
   const selectedMarkerRef = useRef<L.Marker | null>(null);
   const drillRef = useRef<"india" | "state" | "city">("india");
@@ -246,6 +248,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
   nearbyRef.current = nearbyEvents;
 
   const clearDyn = useCallback(() => {
+    if (moveEndCb.current) { map.current?.off("moveend", moveEndCb.current); moveEndCb.current = null; }
     if (dynLayer.current) { dynLayer.current.remove(); dynLayer.current = null; }
   }, []);
 
@@ -265,9 +268,8 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
     setDrill("india");
     setCurrentStateName(null);
     stateDataRef.current = null;
-    m.flyTo(indiaCenter, 5, { duration: 0.8 });
 
-    const layer = L.layerGroup().addTo(m);
+    const layer = L.layerGroup();
     dynLayer.current = layer;
 
     for (const state of indianStates) {
@@ -297,6 +299,16 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
       um.bindTooltip("You are here", { permanent: false, direction: "top", offset: [0, -16] });
       userMarkerRef.current = um;
     }
+
+    const gen = ++generationRef.current;
+    const addLayer = () => {
+      if (gen !== generationRef.current) return;
+      moveEndCb.current = null;
+      layer.addTo(m);
+    };
+    moveEndCb.current = addLayer;
+    m.on("moveend", addLayer);
+    m.flyTo(indiaCenter, 5, { duration: 0.8 });
   }, [clearDyn, phys]);
 
   const goState = useCallback((state: StateData) => {
@@ -306,7 +318,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
     setDrill("state");
     setCurrentStateName(state.name);
     stateDataRef.current = state;
-    const layer = L.layerGroup().addTo(m);
+    const layer = L.layerGroup();
     dynLayer.current = layer;
 
     const stateEvents = phys((e) => e.state === state.name);
@@ -325,16 +337,6 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
         mk.bindPopup(eventPopup(e, st), { maxWidth: 300 });
         mk.on("click", () => onSelectRef.current(e));
 
-        if (e.venue) {
-          const vlb = L.marker([lat + 0.0008, lng], {
-            icon: L.divIcon({
-              className: "",
-              html: `<div style="font-size:10px;font-weight:600;color:#cbd5e1;text-shadow:0 0 6px #0a0a0f;white-space:nowrap;pointer-events:none;opacity:0.8">${e.venue}</div>`,
-              iconSize: [0, 0],
-              iconAnchor: [0, -12],
-            }),
-          }).addTo(layer);
-        }
       } else {
         const venueName = evts[0].venue || evts[0].city || state.name;
         const mk = L.marker([lat, lng], { icon: clusterMarker(evts.length) }).addTo(layer);
@@ -354,15 +356,6 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
 
         mk.bindPopup(multiEventPopup(groupedByVenue, venueName), { maxWidth: 320, maxHeight: 350 });
         mk.on("click", () => onSelectRef.current(evts[0]));
-
-        const vlb = L.marker([lat + 0.0008, lng], {
-          icon: L.divIcon({
-            className: "",
-            html: `<div style="font-size:10px;font-weight:600;color:#94a3b8;text-shadow:0 0 6px #0a0a0f;white-space:nowrap;pointer-events:none;opacity:0.9">${venueName}</div>`,
-            iconSize: [0, 0],
-            iconAnchor: [0, -12],
-          }),
-        }).addTo(layer);
       }
     }
 
@@ -372,6 +365,15 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
       userMarkerRef.current = um;
       bounds.push([userLocRef.current.lat, userLocRef.current.lng]);
     }
+
+    const gen = ++generationRef.current;
+    const addLayer = () => {
+      if (gen !== generationRef.current) return;
+      moveEndCb.current = null;
+      layer.addTo(m);
+    };
+    moveEndCb.current = addLayer;
+    m.on("moveend", addLayer);
 
     if (bounds.length > 0) {
       const b = L.latLngBounds(bounds);
@@ -386,7 +388,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
     if (!m) return;
     clearDyn();
     setDrill("city");
-    const layer = L.layerGroup().addTo(m);
+    const layer = L.layerGroup();
     dynLayer.current = layer;
 
     const groups = groupByVenue(evts, city.lat, city.lng);
@@ -404,16 +406,6 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
         mk.bindPopup(eventPopup(e, st), { maxWidth: 300 });
         mk.on("click", () => onSelectRef.current(e));
 
-        if (e.venue) {
-          const vlb = L.marker([lat + 0.0008, lng], {
-            icon: L.divIcon({
-              className: "",
-              html: `<div style="font-size:10px;font-weight:600;color:#cbd5e1;text-shadow:0 0 6px #0a0a0f;white-space:nowrap;pointer-events:none;opacity:0.8">${e.venue}</div>`,
-              iconSize: [0, 0],
-              iconAnchor: [0, -12],
-            }),
-          }).addTo(layer);
-        }
       } else {
         const venueName = gEvts[0].venue || gEvts[0].city || city.name;
         const mk = L.marker([lat, lng], { icon: clusterMarker(gEvts.length) }).addTo(layer);
@@ -429,15 +421,6 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
 
         mk.bindPopup(multiEventPopup(groupedByVenue, venueName), { maxWidth: 320, maxHeight: 350 });
         mk.on("click", () => onSelectRef.current(gEvts[0]));
-
-        const vlb = L.marker([lat + 0.0008, lng], {
-          icon: L.divIcon({
-            className: "",
-            html: `<div style="font-size:10px;font-weight:600;color:#94a3b8;text-shadow:0 0 6px #0a0a0f;white-space:nowrap;pointer-events:none;opacity:0.9">${venueName}</div>`,
-            iconSize: [0, 0],
-            iconAnchor: [0, -12],
-          }),
-        }).addTo(layer);
       }
     }
 
@@ -447,6 +430,15 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
       userMarkerRef.current = um;
       bounds.push([userLocRef.current.lat, userLocRef.current.lng]);
     }
+
+    const gen = ++generationRef.current;
+    const addLayer = () => {
+      if (gen !== generationRef.current) return;
+      moveEndCb.current = null;
+      layer.addTo(m);
+    };
+    moveEndCb.current = addLayer;
+    m.on("moveend", addLayer);
 
     if (bounds.length > 0) {
       const b = L.latLngBounds(bounds);
@@ -484,7 +476,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
       .leaflet-popup-close-button{color:#64748b!important;font-size:18px!important;width:32px!important;height:32px!important;display:flex!important;align-items:center!important;justify-content:center!important;border-radius:6px!important}
       .leaflet-popup-close-button:hover{color:#e2e8f0!important;background:rgba(255,255,255,0.06)!important}
       @media(max-width:640px){.leaflet-popup-content{font-size:13px!important}}
-      .leaflet-marker-icon{transition:opacity .3s ease}
+
     `;
     document.head.appendChild(style);
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { adminApi } from "../adminApi";
 
-export function AdminHealth({ token }: { token: string }) {
+export function AdminHealth() {
   const [health, setHealth] = useState<any>(null);
   const [logs, setLogs] = useState<string[]>([]);
   const [logLines, setLogLines] = useState(100);
@@ -9,10 +9,10 @@ export function AdminHealth({ token }: { token: string }) {
 
   useEffect(() => {
     Promise.all([
-      adminApi.systemHealth(token),
-      adminApi.systemLogs(token, logLines),
+      adminApi.systemHealth(),
+      adminApi.systemLogs(logLines),
     ]).then(([h, l]) => { setHealth(h); setLogs(l.logs || []); }).finally(() => setLoading(false));
-  }, [token, logLines]);
+  }, [logLines]);
 
   if (loading) return <div className="p-6 text-slate-400">Loading...</div>;
 
