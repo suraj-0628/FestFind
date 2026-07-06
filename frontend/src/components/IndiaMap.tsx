@@ -189,7 +189,7 @@ function multiEventPopup(groups: { venue: string; events: EventData[] }[], venue
       const d = e.start_date
         ? new Date(e.start_date).toLocaleDateString("en-IN", { day: "numeric", month: "short" })
         : "TBD";
-      return `<div style="display:flex;align-items:start;gap:8px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
+      return `<div style="display:flex;align-items:start;gap:8px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
         <div style="width:8px;height:8px;border-radius:50%;background:${c};box-shadow:0 0 6px ${c};margin-top:5px;flex-shrink:0"></div>
         <div style="min-width:0;flex:1">
           <div style="font-size:13px;font-weight:600;color:#f1f5f9;line-height:1.3">${escapeHtml(e.title)}</div>
@@ -199,11 +199,13 @@ function multiEventPopup(groups: { venue: string; events: EventData[] }[], venue
       </div>`;
     });
 
-  return `<div style="min-width:220px;max-width:280px;font-family:Inter,system-ui,sans-serif">
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08)">
-      <div style="width:8px;height:8px;border-radius:50%;background:#00d4ff;box-shadow:0 0 8px rgba(0,212,255,0.6)"></div>
-      <span style="font-size:13px;font-weight:700;color:#67e8f9">${escapeHtml(venueName)}</span>
-      <span style="margin-left:auto;font-size:10px;color:#64748b;background:rgba(0,212,255,0.15);padding:2px 6px;border-radius:99px">${groups.reduce((n, g) => n + g.events.length, 0)} events</span>
+  return `<div style="min-width:240px;max-width:300px;font-family:Inter,system-ui,sans-serif;padding:4px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.08)">
+      <div style="display:flex;align-items:center;gap:8px;min-width:0;flex:1">
+        <div style="width:8px;height:8px;border-radius:50%;background:#00d4ff;box-shadow:0 0 8px rgba(0,212,255,0.6);flex-shrink:0"></div>
+        <span style="font-size:13px;font-weight:700;color:#67e8f9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(venueName)}</span>
+      </div>
+      <span style="font-size:10px;color:#64748b;background:rgba(0,212,255,0.15);padding:3px 8px;border-radius:99px;white-space:nowrap;flex-shrink:0">${allEvents.length} events</span>
     </div>
     <div style="max-height:300px;overflow-y:auto">${rows.join("")}</div>
   </div>`;
