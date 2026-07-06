@@ -174,50 +174,67 @@ async def api_geocode(q: str, request: Request):
 
 @router.get("/resolve-link")
 def api_resolve_link(url: str, request: Request, user: User = Depends(get_current_user)):
-    """Resolve a Google Maps short link to exact coordinates using headless browser."""
+    """Resolve a Google Maps link to exact coordinates by following redirects with httpx."""
     rate_limit_resolve(request)
-    import subprocess
-    import json
     import re
-    import os
 
     # Sanitize: only allow Google Maps / goo.gl URLs
-    allowed = re.compile(r"^https://(www\.google\.com/maps|maps\.app\.goo\.gl|goo\.gl/maps)")
+    allowed = re.compile(r"^https://(www\.google\.com/maps|maps\.app\.goo\.gl|goo\.gl/maps|maps\.google\.)")
     if not allowed.match(url):
         return {"url": url, "lat": None, "lng": None, "error": "Only Google Maps links are accepted"}
 
-    # Cache to avoid spawning Playwright for the same URL twice
+    # Cache to avoid re-resolving the same URL
     if not hasattr(api_resolve_link, "_cache"):
         api_resolve_link._cache = {}
     cache = api_resolve_link._cache
     if url in cache:
         return cache[url]
 
-    script = os.path.join(os.path.dirname(__file__), "..", "scraper", "resolve_maps.mjs")
-    try:
-        result = subprocess.run(
-            ["node", script, url],
-            capture_output=True, text=True, timeout=30,
-        )
-        data = json.loads(result.stdout.strip())
-        final_url = data.get("url", url)
-        m = re.search(r"@(-?\d+\.?\d+),(-?\d+\.?\d+)", final_url)
+    def _extract_coords(u: str) -> tuple[float | None, float | None]:
+        """Extract lat/lng from a Google Maps URL."""
+        # @lat,lng format (most common)
+        m = re.search(r"@(-?\d+\.?\d+),(-?\d+\.?\d+)", u)
         if m:
-            resp = {"url": final_url, "lat": float(m.group(1)), "lng": float(m.group(2))}
-            cache[url] = resp
-            return resp
-        m = re.search(r"!3d(-?\d+\.?\d+)!4d(-?\d+\.?\d+)", final_url)
+            return float(m.group(1)), float(m.group(2))
+        # !3d lat !4d lng format
+        m = re.search(r"!3d(-?\d+\.?\d+)!4d(-?\d+\.?\d+)", u)
         if m:
-            resp = {"url": final_url, "lat": float(m.group(1)), "lng": float(m.group(2))}
-            cache[url] = resp
-            return resp
-        resp = {"url": final_url, "lat": None, "lng": None}
+            return float(m.group(1)), float(m.group(2))
+        # ?q=lat,lng format
+        m = re.search(r"[?&]q=(-?\d+\.?\d+),(-?\d+\.?\d+)", u)
+        if m:
+            return float(m.group(1)), float(m.group(2))
+        # ?ll=lat,lng format (Apple Maps style)
+        m = re.search(r"[?&]ll=(-?\d+\.?\d+),(-?\d+\.?\d+)", u)
+        if m:
+            return float(m.group(1)), float(m.group(2))
+        # /data=...!3d...!4d format (protobuf encoded)
+        m = re.search(r"!3d(-?\d+\.?\d+)!4d(-?\d+\.?\d+)", u)
+        if m:
+            return float(m.group(1)), float(m.group(2))
+        return None, None
+
+    # Try extracting coords from the URL directly (works for non-short links)
+    lat, lng = _extract_coords(url)
+    if lat is not None:
+        resp = {"url": url, "lat": lat, "lng": lng}
         cache[url] = resp
         return resp
+
+    # For short links (maps.app.goo.gl, goo.gl/maps), follow redirects
+    import httpx
+    try:
+        with httpx.Client(follow_redirects=True, timeout=15) as client:
+            r = client.get(url, headers={"User-Agent": "Mozilla/5.0"})
+            final_url = str(r.url)
+            lat, lng = _extract_coords(final_url)
+            resp = {"url": final_url, "lat": lat, "lng": lng}
+            cache[url] = resp
+            return resp
     except Exception as e:
         import logging
         logging.getLogger(__name__).warning("resolve-link failed for %s: %s", url, e)
-        resp = {"url": url, "lat": None, "lng": None}
+        resp = {"url": url, "lat": None, "lng": None, "error": str(e)}
         cache[url] = resp
         return resp
 
