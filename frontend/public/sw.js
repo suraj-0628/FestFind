@@ -20,33 +20,18 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
 
-  // Skip service worker on localhost (dev mode)
-  if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+  // Only handle same-origin requests
+  if (url.origin !== self.location.origin) {
     return;
   }
 
-  // API requests: network only
+  // API requests: network only, no caching
   if (url.pathname.startsWith("/api/")) {
     e.respondWith(fetch(e.request));
     return;
   }
 
-  // Map tiles: cache first, network fallback
-  if (url.hostname.includes("basemaps.cartocdn.com") || url.hostname.includes("tile.openstreetmap.org")) {
-    e.respondWith(
-      caches.match(e.request).then((cached) => {
-        if (cached) return cached;
-        return fetch(e.request).then((res) => {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
-          return res;
-        });
-      })
-    );
-    return;
-  }
-
-  // Everything else: stale-while-revalidate
+  // Same-origin static assets: stale-while-revalidate
   e.respondWith(
     caches.match(e.request).then((cached) => {
       const network = fetch(e.request).then((res) => {
