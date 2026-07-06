@@ -228,16 +228,9 @@ async def run_scrape_job():
 
             db.commit()
 
-            # Re-geocode events that have a venue but might share city-center coords
+            # Re-geocode events that share city-center coords
             from app.scraper.geocoder import geocode_venue as _geocode
             regeo_count = 0
-            events_with_venue = db.query(Event).filter(
-                Event.venue != None,
-                Event.venue != "",
-                Event.city != None,
-                Event.is_scraped == True,
-            ).all()
-            # Find events whose coords match a city-center duplicate
             coord_events = db.query(Event).filter(
                 Event.latitude != None,
                 Event.longitude != None,
@@ -247,17 +240,31 @@ async def run_scrape_job():
             for ce in coord_events:
                 key = (round(ce.latitude, 2), round(ce.longitude, 2))
                 coord_counts[key] = coord_counts.get(key, 0) + 1
-            for ev in events_with_venue:
-                if ev.latitude and ev.longitude:
-                    key = (round(ev.latitude, 2), round(ev.longitude, 2))
-                    if coord_counts.get(key, 0) <= 1:
-                        continue
-                lat, lng = _geocode(ev.venue or "", ev.city or "", ev.state or "")
+            clustered = [e for e in coord_events if coord_counts.get((round(e.latitude, 2), round(e.longitude, 2)), 0) > 1]
+            logger.info("Re-geocode: %d events at shared coords across %d clusters", len(clustered), len(set((round(e.latitude, 2), round(e.longitude, 2)) for e in clustered)))
+            for ev in clustered:
+                venue = (ev.venue or "").strip()
+                city = (ev.city or "").strip()
+                # Skip if venue is same as city — won't get different coords
+                if not venue or venue.lower() == city.lower():
+                    continue
+                # Skip if venue looks like an event name, not a place
+                _place_kw = ["college", "university", "institute", "campus", "academy",
+                             "school", "center", "centre", "hall", "auditorium", "ground",
+                             "stadium", "hotel", "resort", "tech park", "engineering"]
+                if not any(kw in venue.lower() for kw in _place_kw):
+                    continue
+                lat, lng = _geocode(venue, city, ev.state or "")
                 if lat and lng:
-                    ev.latitude = lat
-                    ev.longitude = lng
-                    regeo_count += 1
-                    time.sleep(1.5)
+                    new_key = (round(lat, 2), round(lng, 2))
+                    # Only update if it actually moved to a different spot
+                    old_key = (round(ev.latitude, 2), round(ev.longitude, 2))
+                    if new_key != old_key:
+                        ev.latitude = lat
+                        ev.longitude = lng
+                        regeo_count += 1
+                        logger.info("Re-geocoded '%s' from city-center to venue: %.6f, %.6f", venue[:40], lat, lng)
+                    time.sleep(2.5)
             if regeo_count:
                 db.commit()
                 logger.info("Re-geocoded %d events to venue-specific coords", regeo_count)

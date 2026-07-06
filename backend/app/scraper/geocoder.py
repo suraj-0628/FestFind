@@ -89,7 +89,7 @@ def geocode_venue(venue: str, city: str, state: str) -> tuple[float | None, floa
             _geocache[venue_query] = (lat, lng)
             _save_cache()
             return lat, lng
-        time.sleep(1.5)
+        time.sleep(2.5)
 
     # Fallback to city-level — don't cache these (they cause clustering)
     if city and state:
