@@ -180,8 +180,10 @@ function groupByVenue(events: EventData[], stateLat: number, stateLng: number): 
 }
 
 function multiEventPopup(groups: { venue: string; events: EventData[] }[], venueName: string): string {
-  const rows = groups.flatMap((g) =>
-    g.events.map((e) => {
+  const allEvents = groups.flatMap((g) => g.events);
+  allEvents.sort((a, b) => (a.start_date || "9999").localeCompare(b.start_date || "9999"));
+
+  const rows = allEvents.map((e) => {
       const st = getEventStatus(e);
       const c = statusColor(st);
       const d = e.start_date
@@ -195,8 +197,7 @@ function multiEventPopup(groups: { venue: string; events: EventData[] }[], venue
           ${e.event_url ? `<a href="${escapeHtml(e.event_url)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:4px;font-size:10px;font-weight:600;color:#00d4ff">Register →</a>` : ""}
         </div>
       </div>`;
-    })
-  );
+    });
 
   return `<div style="min-width:220px;max-width:280px;font-family:Inter,system-ui,sans-serif">
     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding-bottom:8px;border-bottom:1px solid rgba(255,255,255,0.08)">
