@@ -67,7 +67,7 @@ async def security_headers(request, call_next):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https://*.basemaps.cartocdn.com https://*.openstreetmap.org https://*.tile.openstreetmap.org https://fonts.gstatic.com data: blob:; connect-src 'self' https://nominatim.openstreetmap.org https://ip-api.com; font-src 'self' https://fonts.gstatic.com"
+    response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' https://*.basemaps.cartocdn.com https://*.openstreetmap.org https://*.tile.openstreetmap.org https://fonts.gstatic.com data: blob:; connect-src 'self' https://*.basemaps.cartocdn.com https://*.openstreetmap.org https://nominatim.openstreetmap.org https://ip-api.com https://fonts.googleapis.com https://fonts.gstatic.com; font-src 'self' https://fonts.gstatic.com"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(self)"
     return response
 
