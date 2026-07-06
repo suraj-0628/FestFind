@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
@@ -65,6 +65,10 @@ class UserOut(BaseModel):
 
 class RoleUpdate(BaseModel):
     role: str
+
+
+class BulkAction(BaseModel):
+    event_ids: list[str] = Field(..., max_length=200)
 
 
 class EventAdminOut(BaseModel):
@@ -407,22 +411,22 @@ def delete_event(event_id: str, user: User = Depends(get_maintainer_user), db: S
 
 
 @router.put("/events/bulk-approve")
-def bulk_approve(event_ids: list[str], user: User = Depends(get_maintainer_user), db: Session = Depends(get_db)):
-    count = db.query(Event).filter(Event.id.in_(event_ids)).update({Event.is_approved: True}, synchronize_session=False)
+def bulk_approve(req: BulkAction, user: User = Depends(get_maintainer_user), db: Session = Depends(get_db)):
+    count = db.query(Event).filter(Event.id.in_(req.event_ids)).update({Event.is_approved: True}, synchronize_session=False)
     db.commit()
     return {"message": f"{count} events approved"}
 
 
 @router.put("/events/bulk-reject")
-def bulk_reject(event_ids: list[str], user: User = Depends(get_maintainer_user), db: Session = Depends(get_db)):
-    count = db.query(Event).filter(Event.id.in_(event_ids)).update({Event.is_approved: False}, synchronize_session=False)
+def bulk_reject(req: BulkAction, user: User = Depends(get_maintainer_user), db: Session = Depends(get_db)):
+    count = db.query(Event).filter(Event.id.in_(req.event_ids)).update({Event.is_approved: False}, synchronize_session=False)
     db.commit()
     return {"message": f"{count} events rejected"}
 
 
 @router.post("/events/bulk-delete")
-def bulk_delete(event_ids: list[str], user: User = Depends(get_maintainer_user), db: Session = Depends(get_db)):
-    count = db.query(Event).filter(Event.id.in_(event_ids)).delete(synchronize_session=False)
+def bulk_delete(req: BulkAction, user: User = Depends(get_maintainer_user), db: Session = Depends(get_db)):
+    count = db.query(Event).filter(Event.id.in_(req.event_ids)).delete(synchronize_session=False)
     db.commit()
     return {"message": f"{count} events deleted"}
 

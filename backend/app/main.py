@@ -22,6 +22,9 @@ logging.basicConfig(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.config import require_jwt_secret
+    require_jwt_secret()
+
     Base.metadata.create_all(bind=engine)
 
     from app.scraper.scheduler import start_scheduler

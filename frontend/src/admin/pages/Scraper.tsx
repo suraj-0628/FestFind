@@ -8,7 +8,11 @@ export function AdminScraper() {
 
   const refresh = () => adminApi.scraperStatus().then(setStatus).finally(() => setLoading(false));
 
-  useEffect(() => { refresh(); const i = setInterval(refresh, 5000); return () => clearInterval(i); }, []);
+  useEffect(() => {
+    refresh();
+    const i = setInterval(refresh, status?.is_running ? 5000 : 30000);
+    return () => clearInterval(i);
+  }, [status?.is_running]);
 
   const handleRun = async () => {
     setRunning(true);

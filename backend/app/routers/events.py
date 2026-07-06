@@ -74,7 +74,12 @@ def list_events(
     if event_type:
         query = query.filter(Event.event_type == event_type)
     if search:
-        query = query.filter(Event.title.ilike(f"%{search}%"))
+        query = query.filter(
+            (Event.title.ilike(f"%{search}%"))
+            | (Event.venue.ilike(f"%{search}%"))
+            | (Event.organizer.ilike(f"%{search}%"))
+            | (Event.city.ilike(f"%{search}%"))
+        )
     if status:
         if status == "ongoing":
             query = query.filter(
@@ -142,23 +147,28 @@ def api_reverse_geocode(lat: float, lng: float, request: Request):
 
 
 @router.get("/geocode")
-def api_geocode(q: str, request: Request):
+async def api_geocode(q: str, request: Request):
     """Forward geocode a location string (city, venue, etc.) via Nominatim."""
     rate_limit_geocode(request)
     if len(q) > 200:
         raise HTTPException(400, "Query too long")
+    import asyncio
     import urllib.parse
     import json
     import urllib.request
-    try:
-        url = f"https://nominatim.openstreetmap.org/search?q={urllib.parse.quote(q)}&format=json&limit=1"
-        req = urllib.request.Request(url, headers={"User-Agent": "FestFind/1.0"})
-        with urllib.request.urlopen(req, timeout=5) as resp:
-            data = json.loads(resp.read())
-            if data:
-                return {"lat": float(data[0]["lat"]), "lng": float(data[0]["lon"]), "display": data[0].get("display_name", q)}
-    except Exception:
-        pass
+
+    def _do_geocode():
+        try:
+            url = f"https://nominatim.openstreetmap.org/search?q={urllib.parse.quote(q)}&format=json&limit=1"
+            req = urllib.request.Request(url, headers={"User-Agent": "FestFind/1.0"})
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                return json.loads(resp.read())
+        except Exception:
+            return []
+
+    data = await asyncio.to_thread(_do_geocode)
+    if data:
+        return {"lat": float(data[0]["lat"]), "lng": float(data[0]["lon"]), "display": data[0].get("display_name", q)}
     return {"lat": None, "lng": None, "display": ""}
 
 
@@ -176,6 +186,13 @@ def api_resolve_link(url: str, request: Request, user: User = Depends(get_curren
     if not allowed.match(url):
         return {"url": url, "lat": None, "lng": None, "error": "Only Google Maps links are accepted"}
 
+    # Cache to avoid spawning Playwright for the same URL twice
+    if not hasattr(api_resolve_link, "_cache"):
+        api_resolve_link._cache = {}
+    cache = api_resolve_link._cache
+    if url in cache:
+        return cache[url]
+
     script = os.path.join(os.path.dirname(__file__), "..", "scraper", "resolve_maps.mjs")
     try:
         result = subprocess.run(
@@ -186,13 +203,23 @@ def api_resolve_link(url: str, request: Request, user: User = Depends(get_curren
         final_url = data.get("url", url)
         m = re.search(r"@(-?\d+\.?\d+),(-?\d+\.?\d+)", final_url)
         if m:
-            return {"url": final_url, "lat": float(m.group(1)), "lng": float(m.group(2))}
+            resp = {"url": final_url, "lat": float(m.group(1)), "lng": float(m.group(2))}
+            cache[url] = resp
+            return resp
         m = re.search(r"!3d(-?\d+\.?\d+)!4d(-?\d+\.?\d+)", final_url)
         if m:
-            return {"url": final_url, "lat": float(m.group(1)), "lng": float(m.group(2))}
-        return {"url": final_url, "lat": None, "lng": None}
-    except Exception:
-        return {"url": url, "lat": None, "lng": None}
+            resp = {"url": final_url, "lat": float(m.group(1)), "lng": float(m.group(2))}
+            cache[url] = resp
+            return resp
+        resp = {"url": final_url, "lat": None, "lng": None}
+        cache[url] = resp
+        return resp
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).warning("resolve-link failed for %s: %s", url, e)
+        resp = {"url": url, "lat": None, "lng": None}
+        cache[url] = resp
+        return resp
 
 
 @router.get("/scrape/status")

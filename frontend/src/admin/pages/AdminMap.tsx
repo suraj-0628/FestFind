@@ -38,7 +38,7 @@ export function AdminMap() {
   useEffect(() => {
     setLoading(true);
     setError("");
-    adminApi.allEvents(2000)
+    adminApi.allEvents(500)
       .then((data) => setEvents(data))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));

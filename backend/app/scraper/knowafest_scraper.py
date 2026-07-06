@@ -251,6 +251,7 @@ def _parse_date(s: str) -> datetime | None:
     if not s:
         return None
     s = s.strip()
+    s = s.replace("Z", "+00:00")
     # Date-only: return as-is (midnight) — caller decides start vs end normalization
     if re.match(r"^\d{4}-\d{2}-\d{2}$", s):
         return datetime.strptime(s, "%Y-%m-%d")

@@ -125,4 +125,23 @@ export const indianStates: StateData[] = [
     { name: "Visakhapatnam", lat: 17.6868, lng: 83.2185 },
     { name: "Vijayawada", lat: 16.5062, lng: 80.648 },
   ]},
+  { name: "Ladakh", lat: 34.1526, lng: 77.5771, cities: [
+    { name: "Leh", lat: 34.1526, lng: 77.5771 },
+  ]},
+  { name: "Chandigarh", lat: 30.7333, lng: 76.7794, cities: [
+    { name: "Chandigarh", lat: 30.7333, lng: 76.7794 },
+  ]},
+  { name: "Puducherry", lat: 11.9416, lng: 79.8083, cities: [
+    { name: "Puducherry", lat: 11.9416, lng: 79.8083 },
+  ]},
+  { name: "Dadra and Nagar Haveli and Daman and Diu", lat: 20.3974, lng: 72.9066, cities: [
+    { name: "Daman", lat: 20.3974, lng: 72.8354 },
+    { name: "Diu", lat: 20.7141, lng: 70.9873 },
+  ]},
+  { name: "Lakshadweep", lat: 10.5667, lng: 72.6417, cities: [
+    { name: "Kavaratti", lat: 10.5667, lng: 72.6417 },
+  ]},
+  { name: "Andaman and Nicobar Islands", lat: 11.7401, lng: 92.6586, cities: [
+    { name: "Port Blair", lat: 11.6234, lng: 92.7265 },
+  ]},
 ];

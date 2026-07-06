@@ -156,12 +156,22 @@ function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: numbe
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+function deterministicOffset(id: string, index: number): number {
+  let hash = 0;
+  const str = id + index;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash + str.charCodeAt(i)) | 0;
+  }
+  return (hash % 100) / 100 - 0.5;
+}
+
 function groupByVenue(events: EventData[], stateLat: number, stateLng: number): { lat: number; lng: number; events: EventData[] }[] {
   const placed: { lat: number; lng: number; events: EventData[] }[] = [];
 
-  for (const e of events) {
-    const lat = e.latitude ?? stateLat + (Math.random() - 0.5) * 0.5;
-    const lng = e.longitude ?? stateLng + (Math.random() - 0.5) * 0.5;
+  for (let i = 0; i < events.length; i++) {
+    const e = events[i];
+    const lat = e.latitude ?? stateLat + deterministicOffset(e.id, i) * 0.5;
+    const lng = e.longitude ?? stateLng + deterministicOffset(e.id, i + 1000) * 0.5;
 
     // Try to find an existing group within ~500m
     let found = false;
@@ -230,6 +240,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
   const userMarkerRef = useRef<L.Marker | null>(null);
   const selectedMarkerRef = useRef<L.Marker | null>(null);
   const drillRef = useRef<"india" | "state" | "city">("india");
+  const drillTargetRef = useRef<{ state?: StateData; city?: CityData; evts?: EventData[] }>({});
   const stateDataRef = useRef<StateData | null>(null);
   const [drillLevel, setDrillLevel] = useState<"india" | "state" | "city">("india");
   const [currentStateName, setCurrentStateName] = useState<string | null>(null);
@@ -318,6 +329,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
     setDrill("state");
     setCurrentStateName(state.name);
     stateDataRef.current = state;
+    drillTargetRef.current = { state };
     const layer = L.layerGroup();
     dynLayer.current = layer;
 
@@ -388,6 +400,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
     if (!m) return;
     clearDyn();
     setDrill("city");
+    drillTargetRef.current = { city, state, evts };
     const layer = L.layerGroup();
     dynLayer.current = layer;
 
@@ -506,7 +519,14 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
   }, []);
 
   useEffect(() => {
-    if (drillRef.current === "india") goIndiaRef.current();
+    const drill = drillRef.current;
+    if (drill === "india") {
+      goIndiaRef.current();
+    } else if (drill === "state" && drillTargetRef.current.state) {
+      goStateRef.current(drillTargetRef.current.state);
+    } else if (drill === "city" && drillTargetRef.current.city && drillTargetRef.current.state && drillTargetRef.current.evts) {
+      goCityRef.current(drillTargetRef.current.city, drillTargetRef.current.state, drillTargetRef.current.evts);
+    }
   }, [events]);
 
   useEffect(() => {

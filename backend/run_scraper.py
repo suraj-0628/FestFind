@@ -1,7 +1,7 @@
 import asyncio
 import logging
 
-from app.scraper.scheduler import run_scrape_job, start_scheduler
+from app.scraper.scheduler import start_scheduler
 
 logging.basicConfig(level=logging.INFO)
 
@@ -9,7 +9,7 @@ logging.basicConfig(level=logging.INFO)
 async def main():
     logger = logging.getLogger(__name__)
     scheduler = start_scheduler()
-    logger.info("Scheduler started. Scraping every 2 hours.")
+    logger.info("Scheduler started. Scraping every 6 hours.")
     try:
         await asyncio.Event().wait()
     except KeyboardInterrupt:

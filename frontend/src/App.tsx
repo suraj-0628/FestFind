@@ -8,7 +8,6 @@ import { LoginPage } from "./components/LoginPage";
 import { AuthProvider, useAuth } from "./hooks/useAuth";
 
 import { LocateMeButton } from "./components/LocateMeButton";
-import { SearchThisAreaButton } from "./components/SearchThisAreaButton";
 import { useEvents } from "./hooks/useEvents";
 import { useLocation } from "./hooks/useLocation";
 import { useMediaQuery } from "./hooks/useMediaQuery";
@@ -40,7 +39,6 @@ function AppContent() {
   const [tab, setTab] = useState<Tab>("map");
   const [search, setSearch] = useState("");
   const [selectedEvent, setSelectedEvent] = useState<EventData | null>(null);
-  const [mapMoved, setMapMoved] = useState(false);
   const [mobileSplit, setMobileSplit] = useState(55);
   const [refreshKey, setRefreshKey] = useState(0);
   const dragRef = useRef<{ startY: number; startSplit: number } | null>(null);
@@ -85,10 +83,6 @@ function AppContent() {
   }, [loc.status, loc.lat, loc.lng, loc.city, loc.state]);
 
 
-
-  const handleSearchThisArea = useCallback(() => {
-    setMapMoved(false);
-  }, []);
 
   const handleLocateMe = useCallback(() => {
     loc.locateMe();
@@ -201,7 +195,6 @@ function AppContent() {
                 userLocation={userLocObj}
                 nearbyEvents={nearbyEvents}
               />
-              <SearchThisAreaButton visible={mapMoved} onClick={handleSearchThisArea} />
               <LocateMeButton onClick={handleLocateMe} />
               {/* Desktop map legend */}
               <div className="absolute bottom-16 left-4 z-10 rounded-xl glass-map px-3 py-2 flex flex-col gap-1.5 text-[10px]">
@@ -250,7 +243,6 @@ function AppContent() {
                 userLocation={userLocObj}
                 nearbyEvents={nearbyEvents}
               />
-              <SearchThisAreaButton visible={mapMoved} onClick={handleSearchThisArea} />
               <LocateMeButton onClick={handleLocateMe} />
               <div className="absolute top-2 left-2 z-[1000] rounded-lg glass-map px-2 py-1 flex items-center gap-2 text-[9px]">
                 <span className="flex items-center gap-1">

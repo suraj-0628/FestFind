@@ -13,6 +13,9 @@ class RateLimiter:
         """Raise 429 if `key` exceeds `limit` requests within `window` seconds."""
         now = time.time()
         self._hits[key] = [t for t in self._hits[key] if now - t < window]
+        if not self._hits[key]:
+            del self._hits[key]
+            return
         if len(self._hits[key]) >= limit:
             raise HTTPException(429, "Too many requests. Try again later.")
         self._hits[key].append(now)

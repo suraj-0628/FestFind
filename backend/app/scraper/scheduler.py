@@ -2,7 +2,7 @@ import asyncio
 import logging
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from app.scraper.knowafest_scraper import (
     discover_states,
@@ -36,7 +36,8 @@ def get_scrape_status() -> dict:
         return {**_scrape_status, "history": _scrape_status["history"][-10:]}
 
 
-async def run_scrape_job():
+def _run_scrape_sync():
+    """Synchronous scrape job — runs in a thread, never blocks the event loop."""
     with _scrape_lock:
         if _scrape_status["is_running"]:
             logger.warning("Scrape already running, skipping")
@@ -49,7 +50,7 @@ async def run_scrape_job():
         # Step 1: Get all states
         states = discover_states()
         if not states:
-            logger.error("No states found, aborting")
+            logger.critical("No states found from knowafest — site structure may have changed. Aborting scrape.")
             return
 
         # Step 2: For each state, discover events
@@ -83,11 +84,12 @@ async def run_scrape_job():
         now = datetime.now(timezone.utc).replace(tzinfo=None)
 
         try:
-            # Delete past scraped events
+            # Delete past scraped events older than 30 days
+            thirty_days_ago = now - timedelta(days=30)
             past_deleted = db.query(Event).filter(
                 Event.is_scraped == True,
                 Event.end_date != None,
-                Event.end_date < now,
+                Event.end_date < thirty_days_ago,
             ).delete(synchronize_session=False)
             if past_deleted:
                 logger.info("Deleted %d past events", past_deleted)
@@ -195,7 +197,7 @@ async def run_scrape_job():
                         category = "Technical"
 
                 # Auto-detect event_type
-                _online_kw = ["online", "virtual", "webinar", "remote", "hybrid", "e-summit", "e-summit"]
+                _online_kw = ["online", "virtual", "webinar", "remote", "hybrid", "e-summit"]
                 title_lower = (title or "").lower()
                 venue_lower = (venue or "").lower()
                 category_lower = (category or "").lower()
@@ -278,14 +280,14 @@ async def run_scrape_job():
 
         duration = round(time.time() - start_time, 1)
         with _scrape_lock:
-            _scrape_status["last_run"] = datetime.utcnow().isoformat()
+            _scrape_status["last_run"] = datetime.now(timezone.utc).isoformat()
             _scrape_status["last_duration_sec"] = duration
             _scrape_status["events_new"] = new_count
             _scrape_status["events_updated"] = update_count
             _scrape_status["events_skipped"] = skip_count
             _scrape_status["errors"] = error_count
             _scrape_status["history"].append({
-                "time": datetime.utcnow().isoformat(),
+                "time": datetime.now(timezone.utc).isoformat(),
                 "found": len(all_events),
                 "new": new_count,
                 "skipped": skip_count,
@@ -307,15 +309,20 @@ async def run_scrape_job():
             _scrape_status["is_running"] = False
 
 
-def start_scheduler():
-    from apscheduler.schedulers.asyncio import AsyncIOScheduler
+async def run_scrape_job():
+    """Async wrapper — runs the sync scrape in a thread so it never blocks the event loop."""
+    await asyncio.to_thread(_run_scrape_sync)
 
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(run_scrape_job, "interval", hours=6)
+
+def start_scheduler():
+    from apscheduler.schedulers.background import BackgroundScheduler
+
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(_run_scrape_sync, "interval", hours=6)
     scheduler.start()
     logger.info("Scraper scheduler started (every 6 hours)")
 
     if not _scrape_status["is_running"]:
-        threading.Thread(target=lambda: asyncio.run(run_scrape_job()), daemon=True).start()
+        threading.Thread(target=_run_scrape_sync, daemon=True).start()
 
     return scheduler

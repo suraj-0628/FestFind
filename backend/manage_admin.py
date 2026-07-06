@@ -16,6 +16,7 @@ def make_admin(email: str):
             print(f"User with email '{email}' not found")
             return
         user.is_admin = True
+        user.role = "admin"
         db.commit()
         print(f"User '{user.name}' ({user.email}) is now an admin")
     finally:

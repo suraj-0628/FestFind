@@ -30,7 +30,11 @@ def _load_cache():
 
 def _save_cache():
     try:
-        _CACHE_PATH.write_text(json.dumps(_geocache))
+        import os
+        tmp = str(_CACHE_PATH) + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump(_geocache, f)
+        os.replace(tmp, str(_CACHE_PATH))
     except Exception as e:
         logger.warning("Failed to save geocache: %s", e)
 

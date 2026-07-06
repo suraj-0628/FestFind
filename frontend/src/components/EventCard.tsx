@@ -61,7 +61,7 @@ export function EventCard({ event, onClick }: Props) {
       )}
       {event.event_url && (
         <a
-          href={event.event_url}
+          href={event.event_url && /^(https?:\/\/|mailto:)/.test(event.event_url) ? event.event_url : "#"}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}

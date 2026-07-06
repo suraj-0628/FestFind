@@ -1,9 +1,11 @@
 import hashlib
 import hmac
+import json
 import os
 import re
 import time
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import jwt
 from fastapi import APIRouter, Cookie, Depends, HTTPException, Header, Request, Response
@@ -19,8 +21,26 @@ TOKEN_COOKIE = "ff_token"
 
 router = APIRouter()
 
-# In-memory token blacklist: {jti: expiry_timestamp}
+# Token blacklist with file persistence: {jti: expiry_timestamp}
 _token_blacklist: dict[str, float] = {}
+_BLACKLIST_FILE = Path(__file__).parent.parent.parent / "token_blacklist.json"
+
+
+def _load_blacklist():
+    global _token_blacklist
+    try:
+        if _BLACKLIST_FILE.exists():
+            raw = json.loads(_BLACKLIST_FILE.read_text())
+            _token_blacklist = {k: float(v) for k, v in raw.items()}
+    except Exception:
+        pass
+
+
+def _save_blacklist():
+    try:
+        _BLACKLIST_FILE.write_text(json.dumps(_token_blacklist))
+    except Exception:
+        pass
 
 
 def _cleanup_blacklist():
@@ -29,17 +49,23 @@ def _cleanup_blacklist():
     expired = [k for k, v in _token_blacklist.items() if v < now]
     for k in expired:
         del _token_blacklist[k]
+    if expired:
+        _save_blacklist()
 
 
 def _revoke_token(jti: str, expires_at: float):
     _token_blacklist[jti] = expires_at
+    _save_blacklist()
+
+
+_load_blacklist()
 
 
 def _set_token_cookie(response: Response, token: str):
     response.set_cookie(
         TOKEN_COOKIE, token,
         max_age=settings.jwt_expire_hours * 3600,
-        httponly=True, samesite="lax", secure=False, path="/",
+        httponly=True, samesite="lax", secure=True, path="/",
     )
 
 
@@ -147,6 +173,8 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(401, "User not found")
+    if not user.is_active:
+        raise HTTPException(403, "Account is deactivated")
     return user
 
 

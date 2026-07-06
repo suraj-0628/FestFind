@@ -17,10 +17,12 @@ ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 MAGIC_BYTES = {
     b"\xff\xd8\xff": "image/jpeg",
     b"\x89PNG": "image/png",
-    b"RIFF": "image/webp",  # WebP starts with RIFF
+    b"RIFF": "image/webp",
     b"GIF87a": "image/gif",
     b"GIF89a": "image/gif",
 }
+# ponytail: RIFF alone is too loose — verify WEBP at offset 8
+RIFF_MIN_LEN = 12
 MAX_SIZE = 5 * 1024 * 1024  # 5MB
 
 
@@ -38,7 +40,13 @@ async def upload_image(request: Request, file: UploadFile = File(...), user: Use
     detected = None
     for magic, mime in MAGIC_BYTES.items():
         if data[:len(magic)] == magic:
-            detected = mime
+            if magic == b"RIFF":
+                if len(data) >= RIFF_MIN_LEN and data[8:12] == b"WEBP":
+                    detected = mime
+                else:
+                    continue
+            else:
+                detected = mime
             break
     if not detected or detected not in ALLOWED_TYPES:
         raise HTTPException(400, "File content does not match an allowed image type")

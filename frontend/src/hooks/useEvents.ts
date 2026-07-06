@@ -18,7 +18,7 @@ export function useEvents(filters?: {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetchEvents({ ...filters, page_size: 200 })
+    fetchEvents({ ...filters, page_size: 500 })
       .then((data: EventListResponse) => {
         if (!cancelled) {
           setEvents(data.items);

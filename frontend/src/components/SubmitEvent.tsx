@@ -51,6 +51,7 @@ export function SubmitEvent({ onClose, onSubmitted }: Props) {
   const userPinnedRef = useRef(false);
   const [detectedAddr, setDetectedAddr] = useState("");
   const [resolving, setResolving] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const markTouched = (key: string) => setTouched((t) => ({ ...t, [key]: true }));
   const update = (key: string, value: string) => setForm((f) => ({ ...f, [key]: value }));
@@ -158,7 +159,7 @@ export function SubmitEvent({ onClose, onSubmitted }: Props) {
   useEffect(() => {
     if (geocodeTimer.current) clearTimeout(geocodeTimer.current);
     if (userPinnedRef.current || form.event_type !== "physical" || !form.city) return;
-    geocodeTimer.current = setTimeout(() => geocodeLocation(form.venue, form.city, form.state), 800);
+    geocodeTimer.current = setTimeout(() => geocodeLocation(form.venue, form.city, form.state), 2000);
     return () => { if (geocodeTimer.current) clearTimeout(geocodeTimer.current); };
   }, [form.venue, form.city, form.state, form.event_type, geocodeLocation]);
 
@@ -248,9 +249,16 @@ export function SubmitEvent({ onClose, onSubmitted }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title || !form.organizer || !form.category || !form.start_date || !form.end_date) return;
+    setSubmitError('');
+    if (!form.title || !form.organizer || !form.category || !form.start_date || !form.end_date) {
+      setSubmitError('Please fill in all required fields');
+      return;
+    }
     if (form.event_type === "physical" && !pinLat) return;
-    if (form.event_type === "physical" && !form.image_url) return;
+    if (form.event_type === "physical" && !form.image_url) {
+      setSubmitError('Event poster is required for physical events');
+      return;
+    }
     setSubmitting(true);
     setResult(null);
     try {
@@ -637,6 +645,8 @@ export function SubmitEvent({ onClose, onSubmitted }: Props) {
             </div>
           </div>
         )}
+
+        {submitError && <p className="text-red-400 text-sm">{submitError}</p>}
 
         <div className="flex flex-col sm:flex-row gap-3 mt-2">
           <button
