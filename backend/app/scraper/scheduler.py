@@ -228,6 +228,40 @@ async def run_scrape_job():
 
             db.commit()
 
+            # Re-geocode events that have a venue but might share city-center coords
+            from app.scraper.geocoder import geocode_venue as _geocode
+            regeo_count = 0
+            events_with_venue = db.query(Event).filter(
+                Event.venue != None,
+                Event.venue != "",
+                Event.city != None,
+                Event.is_scraped == True,
+            ).all()
+            # Find events whose coords match a city-center duplicate
+            coord_events = db.query(Event).filter(
+                Event.latitude != None,
+                Event.longitude != None,
+                Event.is_scraped == True,
+            ).all()
+            coord_counts: dict[tuple, int] = {}
+            for ce in coord_events:
+                key = (round(ce.latitude, 2), round(ce.longitude, 2))
+                coord_counts[key] = coord_counts.get(key, 0) + 1
+            for ev in events_with_venue:
+                if ev.latitude and ev.longitude:
+                    key = (round(ev.latitude, 2), round(ev.longitude, 2))
+                    if coord_counts.get(key, 0) <= 1:
+                        continue
+                lat, lng = _geocode(ev.venue or "", ev.city or "", ev.state or "")
+                if lat and lng:
+                    ev.latitude = lat
+                    ev.longitude = lng
+                    regeo_count += 1
+                    time.sleep(1.5)
+            if regeo_count:
+                db.commit()
+                logger.info("Re-geocoded %d events to venue-specific coords", regeo_count)
+
         except Exception as e:
             db.rollback()
             logger.error("DB error: %s", e)

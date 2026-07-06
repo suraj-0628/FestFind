@@ -72,28 +72,38 @@ def geocode_venue(venue: str, city: str, state: str) -> tuple[float | None, floa
     """Geocode using venue + city + state. Returns (lat, lng) or (None, None)."""
     _load_cache()
 
-    queries = []
     v = _clean_venue(venue)
-    if v and city:
-        queries.append(f"{v}, {city}, {state or 'India'}")
-    if city and state:
-        queries.append(f"{city}, {state}")
-    if city:
-        queries.append(f"{city}, India")
+    venue_query = f"{v}, {city}, {state or 'India'}" if v and city else None
 
-    for q in queries:
-        if q in _geocache:
-            lat, lng = _geocache[q]
-            logger.info("Geocache hit: '%s' -> %.6f, %.6f", q[:60], lat, lng)
-            return lat, lng
+    # Check cache for venue-specific query only
+    if venue_query and venue_query in _geocache:
+        lat, lng = _geocache[venue_query]
+        logger.info("Geocache hit: '%s' -> %.6f, %.6f", venue_query[:60], lat, lng)
+        return lat, lng
 
-        lat, lng = _nominatim_query(q)
+    # Try venue-specific first
+    if venue_query:
+        lat, lng = _nominatim_query(venue_query)
         if lat and lng:
-            logger.info("Geocoded '%s' -> %.6f, %.6f", q[:60], lat, lng)
-            _geocache[q] = (lat, lng)
+            logger.info("Geocoded '%s' -> %.6f, %.6f", venue_query[:60], lat, lng)
+            _geocache[venue_query] = (lat, lng)
             _save_cache()
             return lat, lng
         time.sleep(1.5)
+
+    # Fallback to city-level — don't cache these (they cause clustering)
+    if city and state:
+        lat, lng = _nominatim_query(f"{city}, {state}")
+        if lat and lng:
+            logger.info("Geocoded city fallback '%s' -> %.6f, %.6f", city, lat, lng)
+            return lat, lng
+        time.sleep(1.5)
+
+    if city:
+        lat, lng = _nominatim_query(f"{city}, India")
+        if lat and lng:
+            logger.info("Geocoded city fallback '%s' -> %.6f, %.6f", city, lat, lng)
+            return lat, lng
 
     return None, None
 
