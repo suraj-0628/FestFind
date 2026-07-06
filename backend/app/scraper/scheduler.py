@@ -127,6 +127,9 @@ async def run_scrape_job():
                 description = (detail or {}).get("description", "")
                 start_date = (detail or {}).get("start_date") or _parse_date(evt.get("start_str"))
                 end_date = (detail or {}).get("end_date") or _parse_date(evt.get("end_str"))
+                # Normalize date-only end_date to end of day so events stay ongoing all day
+                if end_date and end_date.hour == 0 and end_date.minute == 0 and end_date.second == 0:
+                    end_date = end_date.replace(hour=23, minute=59, second=59)
                 venue = (detail or {}).get("venue") or evt.get("venue", "")
                 city = (detail or {}).get("city") or evt.get("city", "")
                 state_name = (detail or {}).get("state") or evt.get("state", "")

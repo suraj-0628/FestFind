@@ -251,9 +251,9 @@ def _parse_date(s: str) -> datetime | None:
     if not s:
         return None
     s = s.strip()
-    # Date-only: normalize to end of day so single-day events stay ongoing the full day
+    # Date-only: return as-is (midnight) — caller decides start vs end normalization
     if re.match(r"^\d{4}-\d{2}-\d{2}$", s):
-        return datetime.strptime(s, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+        return datetime.strptime(s, "%Y-%m-%d")
     for fmt in ("%Y-%m-%dT%H:%M:%S%z", "%Y-%m-%dT%H:%M:%S",
                 "%d/%m/%Y", "%B %d, %Y", "%d %b %Y", "%d %B %Y"):
         try:
