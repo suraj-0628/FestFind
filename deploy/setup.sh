@@ -26,8 +26,8 @@ if [ ! -d "$APP_DIR" ]; then
     mkdir -p "$APP_DIR"
 fi
 
-# If running from repo dir, copy files
-if [ -f "./backend/app/main.py" ]; then
+# If running from repo dir, copy files (skip if already at target)
+if [ "$(realpath .)" != "$(realpath $APP_DIR)" ] && [ -f "./backend/app/main.py" ]; then
     cp -r . "$APP_DIR/"
 elif [ ! -f "$APP_DIR/backend/app/main.py" ]; then
     echo "Clone your repo to $APP_DIR first, then re-run this script."
