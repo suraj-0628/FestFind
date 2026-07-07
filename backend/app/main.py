@@ -45,6 +45,8 @@ ALLOWED_ORIGINS = [
 ]
 if _server_host:
     ALLOWED_ORIGINS.extend([f"https://{_server_host}", f"http://{_server_host}"])
+    if not _server_host.startswith("www."):
+        ALLOWED_ORIGINS.extend([f"https://www.{_server_host}", f"http://www.{_server_host}"])
 _extra = os.getenv("CORS_ORIGINS", "")
 if _extra:
     ALLOWED_ORIGINS.extend([o.strip() for o in _extra.split(",") if o.strip()])
