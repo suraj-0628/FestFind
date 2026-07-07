@@ -1,13 +1,6 @@
-const CACHE_NAME = "festfind-v1";
-const PRECACHE = ["/", "/index.html"];
+const CACHE_NAME = "festfind-v2";
 
-self.addEventListener("install", (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE))
-  );
-  self.skipWaiting();
-});
-
+self.addEventListener("install", () => self.skipWaiting());
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     caches.keys().then((keys) =>
@@ -20,24 +13,28 @@ self.addEventListener("activate", (e) => {
 self.addEventListener("fetch", (e) => {
   const url = new URL(e.request.url);
 
-  // Only handle same-origin requests
-  if (url.origin !== self.location.origin) {
-    return;
-  }
+  // Only same-origin
+  if (url.origin !== self.location.origin) return;
 
-  // API requests: network only, no caching
+  // API: network only
   if (url.pathname.startsWith("/api/")) {
     e.respondWith(fetch(e.request));
     return;
   }
 
-  // Same-origin static assets: stale-while-revalidate
+  // HTML: network only (prevents stale page after deploy)
+  if (e.request.mode === "navigate" || url.pathname.endsWith(".html") || url.pathname === "/") {
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+    return;
+  }
+
+  // Static assets (JS/CSS/images): stale-while-revalidate
   e.respondWith(
     caches.match(e.request).then((cached) => {
       const network = fetch(e.request).then((res) => {
         if (res.ok) {
           const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, clone));
+          caches.open(CACHE_NAME).then((c) => c.put(e.request, clone));
         }
         return res;
       }).catch(() => cached);

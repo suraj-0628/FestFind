@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     jwt_secret: str = ""
     jwt_algorithm: str = "HS256"
     jwt_expire_hours: int = 72
+    sync_api_key: str = ""
 
     class Config:
         env_file = ".env"
@@ -19,6 +20,9 @@ settings = Settings()
 
 if not settings.jwt_secret:
     settings.jwt_secret = os.environ.get("JWT_SECRET", "")
+
+if not settings.sync_api_key:
+    settings.sync_api_key = os.environ.get("SYNC_API_KEY", "")
 
 
 def require_jwt_secret():

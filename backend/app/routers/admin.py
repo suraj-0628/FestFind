@@ -1,10 +1,11 @@
 import asyncio
 import csv
 import io
+import logging
 import os
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import func, text
@@ -597,6 +598,104 @@ def update_flag(key: str, req: FeatureFlagUpdate, user: User = Depends(get_admin
     flag.value = req.value
     db.commit()
     return {"key": flag.key, "value": flag.value}
+
+
+# ── Event Sync (local scraper → server) ────────────────────────────
+
+class SyncEventItem(BaseModel):
+    title: str
+    description: str | None = None
+    event_url: str | None = None
+    source_url: str
+    start_date: str | None = None
+    end_date: str | None = None
+    venue: str | None = None
+    city: str | None = None
+    state: str | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    category: str | None = None
+    organizer: str | None = None
+    image_url: str | None = None
+    event_type: str = "physical"
+    tags: str | None = None
+
+
+class SyncRequest(BaseModel):
+    events: list[SyncEventItem]
+    scrape_time: str | None = None
+
+
+@router.post("/sync")
+def sync_events(req: SyncRequest, request: Request, db: Session = Depends(get_db)):
+    """Accept scraped events from local machine. Auth via SYNC_API_KEY header."""
+    from app.config import settings
+    api_key = request.headers.get("X-Sync-Key", "")
+    if not settings.sync_api_key or api_key != settings.sync_api_key:
+        raise HTTPException(401, "Invalid sync key")
+
+    existing_urls = set()
+    for (url,) in db.query(Event.source_url).filter(Event.source_url != None).all():
+        if url:
+            existing_urls.add(url.replace("https://www.", "https://"))
+
+    new_count = 0
+    skip_count = 0
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+
+    for item in req.events:
+        normalized = item.source_url.replace("https://www.", "https://")
+        if normalized in existing_urls:
+            skip_count += 1
+            continue
+
+        start_date = None
+        end_date = None
+        if item.start_date:
+            try:
+                start_date = datetime.fromisoformat(item.start_date)
+            except (ValueError, TypeError):
+                pass
+        if item.end_date:
+            try:
+                end_date = datetime.fromisoformat(item.end_date)
+                if end_date.hour == 0 and end_date.minute == 0 and end_date.second == 0:
+                    end_date = end_date.replace(hour=23, minute=59, second=59)
+            except (ValueError, TypeError):
+                pass
+
+        if end_date and end_date < now:
+            skip_count += 1
+            continue
+
+        event = Event(
+            title=item.title[:500],
+            description=item.description,
+            event_url=item.event_url,
+            source_url=item.source_url,
+            start_date=start_date,
+            end_date=end_date,
+            venue=item.venue,
+            city=item.city,
+            state=item.state,
+            latitude=item.latitude,
+            longitude=item.longitude,
+            category=item.category,
+            organizer=item.organizer[:500] if item.organizer else None,
+            image_url=item.image_url[:1000] if item.image_url else None,
+            event_type=item.event_type,
+            tags=item.tags,
+            is_scraped=True,
+            is_user_submitted=False,
+            is_approved=True,
+        )
+        db.add(event)
+        existing_urls.add(normalized)
+        new_count += 1
+
+    db.commit()
+    logger.info("Sync: %d new, %d skipped", new_count, skip_count)
+    return {"new": new_count, "skipped": skip_count, "total_received": len(req.events)}
 
 
 # ── Public endpoints (no auth) ─────────────────────────────────────
