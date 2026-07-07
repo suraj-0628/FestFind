@@ -57,9 +57,7 @@ JWT_SECRET=$(python3 -c "import os; print(os.urandom(32).hex())")
 cat > backend/.env << EOF
 JWT_SECRET=$JWT_SECRET
 SERVER_HOST=${DOMAIN:-$(curl -s ifconfig.me)}
-CORS_ORIGINS=
 DATABASE_URL=sqlite:///./collegefest.db
-ENVIRONMENT=production
 EOF
 
 echo ""
@@ -92,19 +90,19 @@ systemctl enable festfind
 systemctl start festfind
 
 # 9. Nginx reverse proxy
-cat > /etc/nginx/sites-available/festfind << 'EOF'
+cat > /etc/nginx/sites-available/festfind << EOF
 server {
     listen 80;
-    server_name _;
+    server_name ${DOMAIN} www.${DOMAIN};
 
     client_max_body_size 10M;
 
     location / {
         proxy_pass http://127.0.0.1:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_read_timeout 300s;
         proxy_connect_timeout 10s;
     }
@@ -123,7 +121,7 @@ ufw --force enable
 
 # 11. SSL (if domain provided)
 if [ -n "$DOMAIN" ]; then
-    certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos -m "admin@$DOMAIN" || true
+    certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" --non-interactive --agree-tos -m "admin@$DOMAIN" || true
 fi
 
 # 12. Log rotation

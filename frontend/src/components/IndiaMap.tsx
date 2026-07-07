@@ -514,6 +514,36 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
       moveTimerRef.current = setTimeout(() => setMapMoved(true), 500);
     });
 
+    m.on("zoomend", () => {
+      const z = m.getZoom();
+      const drill = drillRef.current;
+      const center = m.getCenter();
+
+      if (drill === "india" && z >= 7) {
+        const state = indianStates.find((s) => {
+          const dLat = Math.abs(center.lat - s.lat);
+          const dLng = Math.abs(center.lng - s.lng);
+          return dLat < 4 && dLng < 4;
+        });
+        if (state) goStateRef.current(state);
+      } else if (drill === "state" && z >= 11 && drillTargetRef.current.state) {
+        const st = drillTargetRef.current.state;
+        const city = st.cities?.find((c) => {
+          const dLat = Math.abs(center.lat - c.lat);
+          const dLng = Math.abs(center.lng - c.lng);
+          return dLat < 1.5 && dLng < 1.5;
+        });
+        if (city) {
+          const evts = phys((e) => e.city === city.name && e.state === st.name);
+          if (evts.length > 0) goCityRef.current(city, st, evts);
+        }
+      } else if (drill === "city" && z <= 6) {
+        if (drillTargetRef.current.state) goStateRef.current(drillTargetRef.current.state);
+      } else if (drill === "state" && z <= 4) {
+        goIndiaRef.current();
+      }
+    });
+
     map.current = m;
     return () => { m.remove(); map.current = null; style.remove(); };
   }, []);
