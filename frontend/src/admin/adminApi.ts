@@ -1,7 +1,11 @@
 const API = "/api/admin";
 
 async function req(path: string, opts?: RequestInit) {
-  const res = await fetch(`${API}${path}`, { ...opts, credentials: "include" });
+  const headers: Record<string, string> = { ...(opts?.headers as Record<string, string> || {}) };
+  if (opts?.body && typeof opts.body === "string") {
+    headers["Content-Type"] = "application/json";
+  }
+  const res = await fetch(`${API}${path}`, { ...opts, headers, credentials: "include" });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     let detail = res.statusText;
