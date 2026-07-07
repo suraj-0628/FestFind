@@ -147,9 +147,9 @@ def _run_scrape_sync():
                     skip_count += 1
                     continue
 
-                # Geocode if missing
+                # Geocode if missing — try venue-specific first, then city fallback
                 if not latitude and city:
-                    _intl_coords = {
+                    _city_fallbacks = {
                         "tokyo": (35.6762, 139.6503), "new york": (40.7128, -74.0060),
                         "san diego": (32.7157, -117.1611), "los angeles": (34.0522, -118.2437),
                         "singapore": (1.3521, 103.8198), "osaka": (34.6937, 135.5023),
@@ -158,23 +158,58 @@ def _run_scrape_sync():
                         "dubai": (25.2048, 55.2708), "bangkok": (13.7563, 100.5018),
                         "boston": (42.3601, -71.0589), "khet huai khwang": (13.7759, 100.5757),
                         "naritha": (13.7759, 100.5757), "karaikudi": (10.0732, 78.7671),
-                        "thrissur": (10.5276, 76.2144), "chennai": (13.0827, 80.2707),
-                        "coimbatore": (11.0168, 76.9558), "erode": (11.3410, 77.7172),
-                        "hyderabad": (17.3850, 78.4867), "bengaluru": (12.9716, 77.5946),
+                        "thrissur": (10.5276, 76.2144), "coimbatore": (11.0168, 76.9558),
+                        "erode": (11.3410, 77.7172), "hyderabad": (17.3850, 78.4867),
                         "tiruchirappalli": (10.7905, 78.7047), "pondicherry": (11.9416, 79.8083),
                         "ahmedabad": (23.0225, 72.5714), "nashik": (19.9975, 73.7898),
                         "kopargaon": (19.7500, 74.4700), "khurda": (20.1822, 85.6180),
                         "mayiladuthurai": (11.1035, 79.6540), "singnapur": (19.7500, 74.4700),
+                        "delhi": (28.7041, 77.1025), "mumbai": (19.0760, 72.8777),
+                        "kolkata": (22.5726, 88.3639), "pune": (18.5204, 73.8567),
+                        "jaipur": (26.9124, 75.7873), "lucknow": (26.8467, 80.9462),
+                        "kanpur": (26.4499, 80.3319), "nagpur": (21.1458, 79.0882),
+                        "indore": (22.7196, 75.8577), "bhopal": (23.2599, 77.4126),
+                        "visakhapatnam": (17.6868, 83.2185), "vijayawada": (16.5062, 80.6480),
+                        "guwahati": (26.1445, 91.7362), "ranchi": (23.3441, 85.3096),
+                        "patna": (25.5941, 85.1376), "bhubaneswar": (20.2961, 85.8245),
+                        "chandigarh": (30.7333, 76.7794), "dehradun": (30.3165, 78.0322),
+                        "surat": (21.1702, 72.8311), "raipur": (21.2514, 81.6296),
+                        "mysore": (12.2958, 76.6394), "mangalore": (12.9141, 74.8560),
+                        "kochi": (9.9312, 76.2673), "trivandrum": (8.5241, 76.9366),
+                        "goa": (15.4909, 73.8278),
                     }
-                    city_key = city.lower().strip()
-                    if city_key in _intl_coords:
-                        latitude, longitude = _intl_coords[city_key]
-                    else:
-                        try:
-                            from app.scraper.geocoder import geocode_venue
-                            latitude, longitude = geocode_venue(venue, city, state_name)
-                        except Exception:
-                            pass
+                    _specific_venue_kw = ["campus", "college", "university", "institute", "academy",
+                        "school", "center", "centre", "lab", "auditorium", "hall", "ground",
+                        "stadium", "hotel", "resort", "park", "hospital", "road", "street",
+                        "nagar", "extension", "phase", "sector", "block", "tower", "complex",
+                        "iit", "nit", "bits", "iiit", "nit", "polytechnic", "engineering",
+                    ]
+                    try:
+                        from app.scraper.geocoder import geocode_venue
+                        venue_lower = (venue or "").lower().strip()
+                        city_lower = city.lower().strip()
+                        # If venue is specific (not just city name) try Nominatim first
+                        if venue_lower and venue_lower != city_lower and any(kw in venue_lower for kw in _specific_venue_kw):
+                            lat_try, lng_try = geocode_venue(venue, city, state_name)
+                            if lat_try and lng_try:
+                                latitude, longitude = lat_try, lng_try
+                            else:
+                                lat_try, lng_try = geocode_venue(city + ", " + state_name, city, state_name)
+                                if lat_try and lng_try:
+                                    latitude, longitude = lat_try, lng_try
+                        else:
+                            lat_try, lng_try = geocode_venue(city, "", state_name)
+                            if lat_try and lng_try:
+                                latitude, longitude = lat_try, lng_try
+                    except Exception:
+                        pass
+                    # Final fallback to city-center coords
+                    if not latitude and venue_lower == city_lower and city_lower in _city_fallbacks:
+                        latitude, longitude = _city_fallbacks[city_lower]
+                    if not latitude:
+                        city_key = city_lower
+                        if city_key in _city_fallbacks:
+                            latitude, longitude = _city_fallbacks[city_key]
 
                 # Auto-categorize
                 if not category:
@@ -253,7 +288,8 @@ def _run_scrape_sync():
                 # Skip if venue looks like an event name, not a place
                 _place_kw = ["college", "university", "institute", "campus", "academy",
                              "school", "center", "centre", "hall", "auditorium", "ground",
-                             "stadium", "hotel", "resort", "tech park", "engineering"]
+                             "stadium", "hotel", "resort", "tech park", "engineering",
+                             "iit", "nit", "bits", "iiit", "polytechnic", "medical", "law", "management"]
                 if not any(kw in venue.lower() for kw in _place_kw):
                     continue
                 lat, lng = _geocode(venue, city, ev.state or "")
