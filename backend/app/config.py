@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     jwt_expire_hours: int = 72
     sync_api_key: str = ""
+    server_host: str = ""
 
     class Config:
         env_file = ".env"

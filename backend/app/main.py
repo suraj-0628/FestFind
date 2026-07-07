@@ -38,7 +38,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="College Fest Hub", version="0.1.0", lifespan=lifespan)
 
 # CORS — auto-allow the server's own domain + localhost for dev
-_server_host = os.getenv("SERVER_HOST", "")
+from app.config import settings as _cfg
+_server_host = _cfg.server_host or os.getenv("SERVER_HOST", "")
 ALLOWED_ORIGINS = [
     "http://localhost:5173", "http://localhost:5176",
     "http://127.0.0.1:5173", "http://127.0.0.1:5176",
