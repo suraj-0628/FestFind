@@ -147,7 +147,7 @@ def _run_scrape_sync():
                     skip_count += 1
                     continue
 
-                # Geocode if missing — try venue-specific first, then city fallback
+                # Geocode if missing — use city fallbacks for speed, fix via re-geocode later
                 if not latitude and city:
                     _city_fallbacks = {
                         "tokyo": (35.6762, 139.6503), "new york": (40.7128, -74.0060),
@@ -176,40 +176,20 @@ def _run_scrape_sync():
                         "surat": (21.1702, 72.8311), "raipur": (21.2514, 81.6296),
                         "mysore": (12.2958, 76.6394), "mangalore": (12.9141, 74.8560),
                         "kochi": (9.9312, 76.2673), "trivandrum": (8.5241, 76.9366),
-                        "goa": (15.4909, 73.8278),
+                        "goa": (15.4909, 73.8278), "chennai": (13.0827, 80.2707),
+                        "bengaluru": (12.9716, 77.5946),
                     }
-                    _specific_venue_kw = ["campus", "college", "university", "institute", "academy",
-                        "school", "center", "centre", "lab", "auditorium", "hall", "ground",
-                        "stadium", "hotel", "resort", "park", "hospital", "road", "street",
-                        "nagar", "extension", "phase", "sector", "block", "tower", "complex",
-                        "iit", "nit", "bits", "iiit", "nit", "polytechnic", "engineering",
-                    ]
-                    try:
-                        from app.scraper.geocoder import geocode_venue
-                        venue_lower = (venue or "").lower().strip()
-                        city_lower = city.lower().strip()
-                        # If venue is specific (not just city name) try Nominatim first
-                        if venue_lower and venue_lower != city_lower and any(kw in venue_lower for kw in _specific_venue_kw):
-                            lat_try, lng_try = geocode_venue(venue, city, state_name)
+                    city_key = city.lower().strip()
+                    if city_key in _city_fallbacks:
+                        latitude, longitude = _city_fallbacks[city_key]
+                    else:
+                        try:
+                            from app.scraper.geocoder import geocode_venue
+                            lat_try, lng_try = geocode_venue(venue or "", city, state_name)
                             if lat_try and lng_try:
                                 latitude, longitude = lat_try, lng_try
-                            else:
-                                lat_try, lng_try = geocode_venue(city + ", " + state_name, city, state_name)
-                                if lat_try and lng_try:
-                                    latitude, longitude = lat_try, lng_try
-                        else:
-                            lat_try, lng_try = geocode_venue(city, "", state_name)
-                            if lat_try and lng_try:
-                                latitude, longitude = lat_try, lng_try
-                    except Exception:
-                        pass
-                    # Final fallback to city-center coords
-                    if not latitude and venue_lower == city_lower and city_lower in _city_fallbacks:
-                        latitude, longitude = _city_fallbacks[city_lower]
-                    if not latitude:
-                        city_key = city_lower
-                        if city_key in _city_fallbacks:
-                            latitude, longitude = _city_fallbacks[city_key]
+                        except Exception:
+                            pass
 
                 # Auto-categorize
                 if not category:
@@ -282,27 +262,33 @@ def _run_scrape_sync():
             for ev in clustered:
                 venue = (ev.venue or "").strip()
                 city = (ev.city or "").strip()
+                state = ev.state or ""
+                title = (ev.title or "").strip()
                 # Skip if venue is same as city — won't get different coords
                 if not venue or venue.lower() == city.lower():
                     continue
-                # Skip if venue looks like an event name, not a place
                 _place_kw = ["college", "university", "institute", "campus", "academy",
                              "school", "center", "centre", "hall", "auditorium", "ground",
                              "stadium", "hotel", "resort", "tech park", "engineering",
                              "iit", "nit", "bits", "iiit", "polytechnic", "medical", "law", "management"]
                 if not any(kw in venue.lower() for kw in _place_kw):
                     continue
-                lat, lng = _geocode(venue, city, ev.state or "")
+                lat, lng = _geocode(venue, city, state)
+                # Try title-based if venue-only failed
+                if not lat and title:
+                    title_words = [w for w in title.lower().split() if len(w) > 3]
+                    title_venue = " ".join(title_words[:5])
+                    if title_venue and any(kw in title_venue for kw in _place_kw):
+                        lat, lng = _geocode(title_venue, city, state)
                 if lat and lng:
                     new_key = (round(lat, 2), round(lng, 2))
-                    # Only update if it actually moved to a different spot
                     old_key = (round(ev.latitude, 2), round(ev.longitude, 2))
                     if new_key != old_key:
                         ev.latitude = lat
                         ev.longitude = lng
                         regeo_count += 1
-                        logger.info("Re-geocoded '%s' from city-center to venue: %.6f, %.6f", venue[:40], lat, lng)
-                    time.sleep(2.5)
+                        logger.info("Re-geocoded '%s' from city-center to venue: %.6f, %.6f", (venue or title)[:40], lat, lng)
+                time.sleep(1.0)
             if regeo_count:
                 db.commit()
                 logger.info("Re-geocoded %d events to venue-specific coords", regeo_count)

@@ -93,7 +93,7 @@ def geocode_venue(venue: str, city: str, state: str) -> tuple[float | None, floa
             _geocache[venue_query] = (lat, lng)
             _save_cache()
             return lat, lng
-        time.sleep(2.5)
+        time.sleep(1.0)
 
     # Fallback to city-level — don't cache these (they cause clustering)
     if city and state:
@@ -101,7 +101,7 @@ def geocode_venue(venue: str, city: str, state: str) -> tuple[float | None, floa
         if lat and lng:
             logger.info("Geocoded city fallback '%s' -> %.6f, %.6f", city, lat, lng)
             return lat, lng
-        time.sleep(1.5)
+        time.sleep(0.6)
 
     if city:
         lat, lng = _nominatim_query(f"{city}, India")
