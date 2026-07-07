@@ -9,7 +9,13 @@ async function req(path: string, opts?: RequestInit) {
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     let detail = res.statusText;
-    try { detail = text ? JSON.parse(text).detail || detail : detail; } catch {}
+    try {
+      const parsed = text ? JSON.parse(text) : null;
+      if (parsed) {
+        const d = parsed.detail;
+        detail = typeof d === "string" ? d : Array.isArray(d) ? d.map((e: any) => e.msg || JSON.stringify(e)).join(", ") : JSON.stringify(parsed);
+      }
+    } catch {}
     throw new Error(detail || "Request failed");
   }
   if (res.headers.get("content-type")?.includes("text/csv")) {
