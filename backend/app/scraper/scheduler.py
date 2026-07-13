@@ -91,6 +91,7 @@ def _run_scrape_sync():
                 Event.end_date != None,
                 Event.end_date < thirty_days_ago,
             ).delete(synchronize_session=False)
+            db.commit()
             if past_deleted:
                 logger.info("Deleted %d past events", past_deleted)
 
@@ -100,6 +101,7 @@ def _run_scrape_sync():
                 if url:
                     existing_urls.add(url.replace("https://www.", "https://"))
 
+            batch_count = 0
             for evt in all_events:
                 source_url = evt.get("source_url", "")
                 if not source_url:
@@ -241,9 +243,13 @@ def _run_scrape_sync():
                 db.add(event)
                 existing_urls.add(normalized_url)
                 new_count += 1
+                batch_count += 1
                 logger.info("Added: %s (%s)", title[:50], city)
+                if batch_count % 20 == 0:
+                    db.commit()
 
-            db.commit()
+            if batch_count % 20 != 0:
+                db.commit()
 
             # Re-geocode events that share city-center coords
             from app.scraper.geocoder import geocode_venue as _geocode
@@ -288,8 +294,10 @@ def _run_scrape_sync():
                         ev.longitude = lng
                         regeo_count += 1
                         logger.info("Re-geocoded '%s' from city-center to venue: %.6f, %.6f", (venue or title)[:40], lat, lng)
+                        if regeo_count % 10 == 0:
+                            db.commit()
                 time.sleep(1.0)
-            if regeo_count:
+            if regeo_count % 10 != 0:
                 db.commit()
                 logger.info("Re-geocoded %d events to venue-specific coords", regeo_count)
 
