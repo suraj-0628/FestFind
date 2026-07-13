@@ -8,15 +8,25 @@ async function req(path: string, opts?: RequestInit) {
   const res = await fetch(`${API}${path}`, { ...opts, headers, credentials: "include" });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    let detail = res.statusText;
+    let detail = res.statusText || "Request failed";
     try {
       const parsed = text ? JSON.parse(text) : null;
       if (parsed) {
         const d = parsed.detail;
-        detail = typeof d === "string" ? d : Array.isArray(d) ? d.map((e: any) => e.msg || JSON.stringify(e)).join(", ") : JSON.stringify(parsed);
+        if (typeof d === "string") {
+          detail = d;
+        } else if (Array.isArray(d)) {
+          detail = d.map((e: any) => e.msg || String(e)).join(", ");
+        } else if (d && typeof d === "object") {
+          detail = d.msg || d.message || JSON.stringify(d);
+        } else if (typeof d === "string") {
+          detail = d;
+        } else {
+          detail = JSON.stringify(parsed);
+        }
       }
     } catch {}
-    throw new Error(detail || "Request failed");
+    throw new Error(String(detail || "Request failed"));
   }
   if (res.headers.get("content-type")?.includes("text/csv")) {
     return res.blob();

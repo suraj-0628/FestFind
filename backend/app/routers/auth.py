@@ -126,11 +126,6 @@ def _is_valid_email(email: str) -> tuple[bool, str]:
     domain = email.split("@")[1].lower()
     if domain in BLOCKED_DOMAINS:
         return False, "Disposable email addresses are not allowed"
-    # Allow any .edu, .ac.in, .gov.in domain
-    if domain.endswith((".edu", ".ac.in", ".gov.in", ".nic.in")):
-        return True, ""
-    if domain not in ALLOWED_EMAIL_DOMAINS:
-        return False, f"Use a valid email provider (Gmail, Outlook, Yahoo, etc.)"
     return True, ""
 
 
