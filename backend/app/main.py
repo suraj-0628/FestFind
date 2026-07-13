@@ -3,10 +3,10 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import JSONResponse, FileResponse
 
 from app.database import engine, Base
 from app.database import migrate as _migrate_db
@@ -38,6 +38,16 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="College Fest Hub", version="0.1.0", lifespan=lifespan)
+
+
+@app.exception_handler(Exception)
+async def debug_exception_handler(request: Request, exc: Exception):
+    if isinstance(exc, HTTPException):
+        return JSONResponse({"detail": exc.detail}, status_code=exc.status_code)
+    import traceback
+    tb = traceback.format_exc()
+    logging.error("Unhandled exception on %s %s: %s", request.method, request.url.path, tb)
+    return JSONResponse({"detail": str(exc)}, status_code=500)
 
 # CORS — auto-allow the server's own domain + localhost for dev
 from app.config import settings as _cfg
