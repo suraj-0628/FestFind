@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
 from app.database import engine, Base
+from app.database import migrate as _migrate_db
 from app.routers import events
 from app.routers import upload
 from app.routers import auth
@@ -26,6 +27,7 @@ async def lifespan(app: FastAPI):
     require_jwt_secret()
 
     Base.metadata.create_all(bind=engine)
+    _migrate_db()
 
     from app.scraper.scheduler import start_scheduler
     scheduler = start_scheduler()
