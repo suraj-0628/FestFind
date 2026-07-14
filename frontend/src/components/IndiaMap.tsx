@@ -543,6 +543,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
   }, []);
 
   useEffect(() => {
+    if (markerClickLockRef.current) return;
     const drill = drillRef.current;
     if (drill === "india") {
       goIndiaRef.current(false);
@@ -554,28 +555,29 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
   }, [events]);
 
   useEffect(() => {
-    if (selectedId) {
-      const e = events.find((ev) => ev.id === selectedId);
-      if (e?.latitude && e?.longitude) {
-        const m = map.current;
-        if (!m) return;
-        if (selectedMarkerRef.current) {
-          m.removeLayer(selectedMarkerRef.current);
-          selectedMarkerRef.current = null;
-        }
-        const st = getEventStatus(e);
-        const mk = L.marker([e.latitude, e.longitude], { icon: glowingMarker(st, 24) }).addTo(m);
-        mk.bindPopup(eventPopup(e, st), { maxWidth: 300 });
-        selectedMarkerRef.current = mk;
-        markerClickLockRef.current = true;
-        m.flyTo([e.latitude, e.longitude], Math.max(m.getZoom(), 11), { duration: 0.8 });
-        setTimeout(() => { markerClickLockRef.current = false; }, 1000);
+    if (!selectedId) {
+      if (selectedMarkerRef.current) {
+        map.current?.removeLayer(selectedMarkerRef.current);
+        selectedMarkerRef.current = null;
       }
-    } else if (selectedMarkerRef.current) {
-      map.current?.removeLayer(selectedMarkerRef.current);
+      return;
+    }
+    const e = evtsRef.current.find((ev) => ev.id === selectedId);
+    if (!e?.latitude || !e?.longitude) return;
+    const m = map.current;
+    if (!m) return;
+    if (selectedMarkerRef.current) {
+      m.removeLayer(selectedMarkerRef.current);
       selectedMarkerRef.current = null;
     }
-  }, [selectedId, events]);
+    const st = getEventStatus(e);
+    const mk = L.marker([e.latitude, e.longitude], { icon: glowingMarker(st, 24) }).addTo(m);
+    mk.bindPopup(eventPopup(e, st), { maxWidth: 300 });
+    selectedMarkerRef.current = mk;
+    markerClickLockRef.current = true;
+    m.flyTo([e.latitude, e.longitude], Math.max(m.getZoom(), 11), { duration: 0.8 });
+    setTimeout(() => { markerClickLockRef.current = false; }, 1000);
+  }, [selectedId]);
 
   useEffect(() => {
     const handler = (ev: CustomEvent<{ lat: number; lng: number; zoom?: number }>) => {
