@@ -15,7 +15,7 @@ function countWords(s: string): number {
   return s.trim() ? s.trim().split(/\s+/).length : 0;
 }
 
-export function SubmitEvent({ onClose, onSubmitted }: Props) {
+export default function SubmitEvent({ onClose, onSubmitted }: Props) {
   const [form, setForm] = useState({
     title: "",
     description: "",

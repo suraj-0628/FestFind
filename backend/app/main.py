@@ -117,13 +117,14 @@ async def sitemap():
     db: Session = SessionLocal()
     try:
         events = db.query(Event).filter(
-            Event.status == "approved",
+            Event.is_approved == True,
             Event.latitude != None,
             Event.longitude != None,
         ).all()
 
         urls = [
             f'  <url>\n    <loc>https://festfind.live/</loc>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>',
+            f'  <url>\n    <loc>https://festfind.live/online</loc>\n    <changefreq>daily</changefreq>\n    <priority>0.9</priority>\n  </url>',
         ]
 
         now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -136,7 +137,7 @@ async def sitemap():
             else:
                 lastmod = now
 
-            ev_url = ev.event_url or f"https://festfind.live/"
+            ev_url = f"https://festfind.live/event/{ev.id}"
             urls.append(
                 f'  <url>\n'
                 f'    <loc>{ev_url}</loc>\n'

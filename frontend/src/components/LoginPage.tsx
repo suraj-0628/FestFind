@@ -4,7 +4,7 @@ import { FestFindLogo } from "./Icons";
 
 type Mode = "login" | "register";
 
-export function LoginPage() {
+export default function LoginPage() {
   const { login, register } = useAuth();
   const [mode, setMode] = useState<Mode>("login");
   const [name, setName] = useState("");

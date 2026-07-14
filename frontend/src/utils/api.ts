@@ -33,6 +33,12 @@ export interface EventListResponse {
   page_size: number;
 }
 
+export async function fetchEvent(id: string): Promise<EventData> {
+  const res = await fetch(`${API_BASE}/${id}`, { credentials: "include" });
+  if (!res.ok) throw new Error("Event not found");
+  return res.json();
+}
+
 export async function fetchEvents(params?: {
   page?: number;
   page_size?: number;

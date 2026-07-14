@@ -25,7 +25,7 @@ function Countdown({ date }: { date: string }) {
   return <span>{diff}</span>;
 }
 
-export function OnlineEvents() {
+export default function OnlineEvents() {
   const [events, setEvents] = useState<EventData[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<"all" | "ongoing" | "upcoming">("all");
