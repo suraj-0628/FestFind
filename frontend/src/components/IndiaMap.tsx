@@ -341,7 +341,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
         const st = getEventStatus(e);
         const mk = L.marker([lat, lng], { icon: glowingMarker(st) }).addTo(layer);
         mk.bindPopup(eventPopup(e, st), { maxWidth: 300 });
-        mk.on("click", () => { markerClickLockRef.current = true; onSelectRef.current(e); setTimeout(() => { markerClickLockRef.current = false; }, 500); });
+        mk.on("click", () => onSelectRef.current(e));
 
       } else {
         const venueName = evts[0].venue || evts[0].city || state.name;
@@ -361,7 +361,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
         });
 
         mk.bindPopup(multiEventPopup(groupedByVenue, venueName), { maxWidth: 320, maxHeight: 350 });
-        mk.on("click", () => { markerClickLockRef.current = true; onSelectRef.current(evts[0]); setTimeout(() => { markerClickLockRef.current = false; }, 500); });
+        mk.on("click", () => onSelectRef.current(evts[0]));
       }
     }
 
@@ -405,7 +405,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
         const st = getEventStatus(e);
         const mk = L.marker([lat, lng], { icon: glowingMarker(st, 22) }).addTo(layer);
         mk.bindPopup(eventPopup(e, st), { maxWidth: 300 });
-        mk.on("click", () => { markerClickLockRef.current = true; onSelectRef.current(e); setTimeout(() => { markerClickLockRef.current = false; }, 500); });
+        mk.on("click", () => onSelectRef.current(e));
 
       } else {
         const venueName = gEvts[0].venue || gEvts[0].city || city.name;
@@ -421,7 +421,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
         for (const g of groupedByVenue) g.events.sort((a, b) => (a.start_date ?? "").localeCompare(b.start_date ?? ""));
 
         mk.bindPopup(multiEventPopup(groupedByVenue, venueName), { maxWidth: 320, maxHeight: 350 });
-        mk.on("click", () => { markerClickLockRef.current = true; onSelectRef.current(gEvts[0]); setTimeout(() => { markerClickLockRef.current = false; }, 500); });
+        mk.on("click", () => onSelectRef.current(gEvts[0]));
       }
     }
 
