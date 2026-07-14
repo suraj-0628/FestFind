@@ -246,6 +246,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
   const [currentStateName, setCurrentStateName] = useState<string | null>(null);
   const [mapMoved, setMapMoved] = useState(false);
   const moveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const markerClickLockRef = useRef(false);
 
   const evtsRef = useRef(events);
   evtsRef.current = events;
@@ -347,7 +348,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
         const st = getEventStatus(e);
         const mk = L.marker([lat, lng], { icon: glowingMarker(st) }).addTo(layer);
         mk.bindPopup(eventPopup(e, st), { maxWidth: 300 });
-        mk.on("click", () => onSelectRef.current(e));
+        mk.on("click", () => { markerClickLockRef.current = true; onSelectRef.current(e); setTimeout(() => { markerClickLockRef.current = false; }, 500); });
 
       } else {
         const venueName = evts[0].venue || evts[0].city || state.name;
@@ -367,7 +368,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
         });
 
         mk.bindPopup(multiEventPopup(groupedByVenue, venueName), { maxWidth: 320, maxHeight: 350 });
-        mk.on("click", () => onSelectRef.current(evts[0]));
+        mk.on("click", () => { markerClickLockRef.current = true; onSelectRef.current(evts[0]); setTimeout(() => { markerClickLockRef.current = false; }, 500); });
       }
     }
 
@@ -417,7 +418,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
         const st = getEventStatus(e);
         const mk = L.marker([lat, lng], { icon: glowingMarker(st, 22) }).addTo(layer);
         mk.bindPopup(eventPopup(e, st), { maxWidth: 300 });
-        mk.on("click", () => onSelectRef.current(e));
+        mk.on("click", () => { markerClickLockRef.current = true; onSelectRef.current(e); setTimeout(() => { markerClickLockRef.current = false; }, 500); });
 
       } else {
         const venueName = gEvts[0].venue || gEvts[0].city || city.name;
@@ -433,7 +434,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
         for (const g of groupedByVenue) g.events.sort((a, b) => (a.start_date ?? "").localeCompare(b.start_date ?? ""));
 
         mk.bindPopup(multiEventPopup(groupedByVenue, venueName), { maxWidth: 320, maxHeight: 350 });
-        mk.on("click", () => onSelectRef.current(gEvts[0]));
+        mk.on("click", () => { markerClickLockRef.current = true; onSelectRef.current(gEvts[0]); setTimeout(() => { markerClickLockRef.current = false; }, 500); });
       }
     }
 
@@ -515,6 +516,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
     });
 
     m.on("zoomend", () => {
+      if (markerClickLockRef.current) return;
       const z = m.getZoom();
       const drill = drillRef.current;
       const center = m.getCenter();
@@ -565,17 +567,17 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
       if (e?.latitude && e?.longitude) {
         const m = map.current;
         if (!m) return;
-        // Remove old selected marker
         if (selectedMarkerRef.current) {
           m.removeLayer(selectedMarkerRef.current);
           selectedMarkerRef.current = null;
         }
-        // Drop a prominent marker for the selected event
         const st = getEventStatus(e);
         const mk = L.marker([e.latitude, e.longitude], { icon: glowingMarker(st, 24) }).addTo(m);
         mk.bindPopup(eventPopup(e, st), { maxWidth: 300 });
         selectedMarkerRef.current = mk;
-        m.flyTo([e.latitude, e.longitude], 12, { duration: 0.8 });
+        markerClickLockRef.current = true;
+        m.flyTo([e.latitude, e.longitude], Math.max(m.getZoom(), 11), { duration: 0.8 });
+        setTimeout(() => { markerClickLockRef.current = false; }, 1000);
       }
     } else if (selectedMarkerRef.current) {
       map.current?.removeLayer(selectedMarkerRef.current);
