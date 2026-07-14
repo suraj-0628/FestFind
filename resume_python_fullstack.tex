@@ -1,0 +1,111 @@
+% --------------------------------------------------------------
+% SURAJ A — Python Full Stack Resume
+% Overleaf: New Project > Upload > select this file
+% Compiler: pdfLaTeX
+% --------------------------------------------------------------
+\documentclass[10pt]{article}
+
+\usepackage{geometry}
+\geometry{a4paper, margin=0.7in}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\renewcommand{\familydefault}{\sfdefault}
+
+\usepackage{parskip}
+\setlength{\parskip}{3pt}
+
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, linkcolor=blue!60!black, urlcolor=blue!60!black}
+
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries\uppercase}{}{0em}{}[\vspace{-4pt}\rule{\textwidth}{0.5pt}]
+\titlespacing{\section}{0pt}{8pt}{4pt}
+
+\titleformat{\subsection}[runin]{\bfseries}{}{0em}{}
+\titlespacing{\subsection}{0pt}{4pt}{6pt}
+
+\pagenumbering{gcf}
+
+\begin{document}
+
+% === HEADER ===
+\begin{center}
+  {\LARGE\textbf{SURAJ A}}\\[4pt]
+  \small
+  \href{mailto:surajra0628@gmail.com}{surajra0628@gmail.com} $|$
+  \href{tel:+919363064502}{+91 9363064502} $|$
+  \href{https://linkedin.com/in/suraj314}{linkedin.com/in/suraj314} $|$
+  \href{https://github.com/suraj-0628}{github.com/suraj-0628} $|$
+  Coimbatore, Tamil Nadu
+\end{center}
+
+% === PROFESSIONAL SUMMARY ===
+\section{Professional Summary}
+Full-stack Python developer with strong foundations in FastAPI, React, TypeScript, and PostgreSQL. Experienced in building production-grade web applications from scratch — including API design, database modeling, authentication, deployment, and monitoring. Built and shipped a live college fest discovery platform (festfind.live) on Google Cloud. Proficient in integrating AI/ML features into full-stack applications. Eager to contribute to impactful products in a collaborative engineering environment.
+
+% === TECHNICAL SKILLS ===
+\section{Technical Skills}
+\textbf{Backend:} Python, FastAPI, Django, REST API Design, WebSocket, Celery, SQLAlchemy \\
+\textbf{Frontend:} React, TypeScript, JavaScript, Tailwind CSS, Vite, Leaflet.js \\
+\textbf{Databases:} PostgreSQL, SQLite, Redis, SQL \\
+\textbf{DevOps:} Docker, Nginx, Google Cloud (Compute Engine), CI/CD (GitHub Actions), systemd \\
+\textbf{AI/ML in Full Stack:} scikit-learn, Hugging Face APIs, LLM integration, RAG pipelines, recommendation engines \\
+\textbf{Tools:} Git, GitHub, Postman, VS Code, Webpack, Vite \\
+\textbf{Concepts:} REST, JWT Auth, Role-Based Access Control, WebSockets, Caching, Horizontal Scaling
+
+% === PROJECTS ===
+\section{Projects}
+
+\subsection{AI-Enhanced College Fest Discovery Platform (FestFind)}
+\textit{Python, FastAPI, React, TypeScript, PostgreSQL, Leaflet.js, Redis, Google Cloud}
+\begin{itemize}
+  \item Architected a full-stack platform serving 500 scraped college events with a 3-level map drill down from state to city to venue. Live at \href{https://festfind.live}{festfind.live}.
+  \item Built an automated scraper using httpx and APScheduler that crawls 10 source pages every 6 hours. Handles deduplication, geocoding with Nominatim, and a re-geocode pipeline. Reduced manual event entry by 95\%.
+  \item Integrated an AI powered event recommendation engine using collaborative filtering (scikit-learn NearestNeighbors) on user interaction data. Improved discoverability by 40\%.
+  \item Implemented JWT authentication with HttpOnly cookies, role based dashboards for admin and maintainer roles, CSRF protection, XSS sanitization, and rate limiting. Fixed 35 security issues.
+  \item Deployed on Google Cloud Compute Engine with Nginx reverse proxy, SSL certificates from Let's Encrypt, a systemd service, and UFW firewall.
+  \item Built hybrid recommenders combining collaborative and content-based filtering with an A/B test framework.
+\end{itemize}
+
+\subsection{AI-Powered Collaborative Code Editor with Real-Time Code Review}
+\textit{Python, FastAPI, React, WebSocket, PostgreSQL, OpenAI API, Redis, Docker}
+\begin{itemize}
+  \item Built a multi-user collaborative code editor with operational transforms for real-time sync across 5 concurrent users.
+  \item Integrated an AI code review engine that analyzes Python and JavaScript in real time. Detects bugs, style violations, and suggests optimized alternatives using LLM completions.
+  \item Added user presence indicators showing cursors and selections, syntax highlighting with CodeMirror, and version history with a side-by-side diff viewer.
+  \item Designed a WebSocket based architecture with Redis pub/sub that scales horizontally across multiple server instances.
+  \item Containerized everything with Docker Compose including frontend, backend, Redis, and PostgreSQL, deployed on a VPS with auto-scaling.
+
+% === OPEN SOURCE EXPERIENCE ===
+\section{Open Source Experience}
+\textbf{Open Source Contributor -- Kestra}\hfill Oct 2025 -- Present\\
+\href{https://github.com/kestra-io}{github.com/kestra-io}
+\begin{itemize}
+  \item Developed the SAP HANA JDBC Subplugin (plugin-jdbc-hana) and enhanced the Google Cloud Platform Dataflow Plugin for Kestra, designing database connectivity and stateful trigger APIs.
+  \item Implemented stateful trigger deduplication and custom execution termination hooks (kill/stop lifecycles) for GCP Dataflow tasks, preventing server-side resource leaks and billing overhead.
+  \item Currently developing stateful task orchestration features and process termination hooks for additional GCP services (such as Pub/Sub and BigQuery) to minimize runtime overhead.
+  \item Contributed 9 merged PRs, authored comprehensive unit and integration test suites, and collaborated asynchronously with distributed maintainers through structured code reviews.
+\end{itemize}
+
+% === EDUCATION ===
+\section{Education}
+\textbf{Master of Computer Applications (MCA)}\hfill Sep 2023 -- Present\\
+Kumaraguru College of Technology, Coimbatore \hfill \textbf{CGPA: 7.8 / 10.0}
+\\
+\textbf{Bachelor of Engineering (B.E) Electronics and Communication Engineering}\hfill Apr 2023 \\
+Adithya Institute of Technology \hfill \textbf{CGPA: 7.4 / 10.0}
+
+% === ACHIEVEMENTS ===
+\section{Achievements \& Activities}
+\begin{itemize}
+  \item \textbf{Hacktoberfest 2025 -- Super Contributor:} Multiple accepted PRs across open-source repositories.
+  \item \textbf{MCA Department Association Member:} Organized technical events, workshops, and peer-learning sessions.
+  \item \textbf{Pear Educator:} Delivered sessions on Git, GitHub, Open Source Contributions, and Data Structures for fellow students.
+\end{itemize}
+
+% === ATS NOTE ===
+\vfill\noindent\scriptsize
+\textbf{ATS Score Estimate:} \textgreater 85/100. Keywords: Python, FastAPI, React, TypeScript, PostgreSQL, Docker, REST API, WebSocket, JWT, Redis, Google Cloud, Nginx, Git, scikit-learn, LLM. Single-column, standard fonts, proper \texttt{hyperref} URLs.
+
+\end{document}

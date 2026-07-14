@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /api/
+Disallow: /hq-9f3k
 
-Sitemap: https://festfind.in/sitemap.xml
+Sitemap: https://festfind.live/sitemap.xml

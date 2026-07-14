@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, PlainTextResponse
 
 from app.database import engine, Base
 from app.database import migrate as _migrate_db
@@ -105,6 +105,56 @@ app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/sitemap.xml", response_class=PlainTextResponse)
+async def sitemap():
+    from sqlalchemy.orm import Session
+    from app.database import SessionLocal
+    from app.models import Event
+    from datetime import datetime, timezone
+
+    db: Session = SessionLocal()
+    try:
+        events = db.query(Event).filter(
+            Event.status == "approved",
+            Event.latitude != None,
+            Event.longitude != None,
+        ).all()
+
+        urls = [
+            f'  <url>\n    <loc>https://festfind.live/</loc>\n    <changefreq>daily</changefreq>\n    <priority>1.0</priority>\n  </url>',
+        ]
+
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        for ev in events:
+            lastmod = ""
+            if ev.updated_at:
+                lastmod = ev.updated_at.strftime("%Y-%m-%d")
+            elif ev.created_at:
+                lastmod = ev.created_at.strftime("%Y-%m-%d")
+            else:
+                lastmod = now
+
+            ev_url = ev.event_url or f"https://festfind.live/"
+            urls.append(
+                f'  <url>\n'
+                f'    <loc>{ev_url}</loc>\n'
+                f'    <lastmod>{lastmod}</lastmod>\n'
+                f'    <changefreq>weekly</changefreq>\n'
+                f'    <priority>0.7</priority>\n'
+                f'  </url>'
+            )
+
+        xml = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            + "\n".join(urls)
+            + "\n</urlset>"
+        )
+        return PlainTextResponse(xml, media_type="application/xml")
+    finally:
+        db.close()
 
 # Serve frontend static files in production
 STATIC_DIR = Path(__file__).parent.parent / "static"

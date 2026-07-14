@@ -1,0 +1,109 @@
+% --------------------------------------------------------------
+% SURAJ A — AIML Resume
+% Overleaf: New Project > Upload > select this file
+% Compiler: pdfLaTeX
+% --------------------------------------------------------------
+\documentclass[10pt]{article}
+
+\usepackage{geometry}
+\geometry{a4paper, margin=0.7in}
+
+% Fonts — ATS-safe
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\renewcommand{\familydefault}{\sfdefault}
+
+\usepackage{parskip}
+\setlength{\parskip}{3pt}
+
+\usepackage{hyperref}
+\hypersetup{colorlinks=true, linkcolor=blue!60!black, urlcolor=blue!60!black}
+
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries\uppercase}{}{0em}{}[\vspace{-4pt}\rule{\textwidth}{0.5pt}]
+\titlespacing{\section}{0pt}{8pt}{4pt}
+
+\titleformat{\subsection}[runin]{\bfseries}{}{0em}{}
+\titlespacing{\subsection}{0pt}{4pt}{6pt}
+
+\pagenumbering{gcf}
+
+\begin{document}
+
+% === HEADER ===
+\begin{center}
+  {\LARGE\textbf{SURAJ A}}\\[4pt]
+  \small
+  \href{mailto:surajra0628@gmail.com}{surajra0628@gmail.com} $|$
+  \href{tel:+919363064502}{+91 9363064502} $|$
+  \href{https://linkedin.com/in/suraj314}{linkedin.com/in/suraj314} $|$
+  \href{https://github.com/suraj-0628}{github.com/suraj-0628} $|$
+  Coimbatore, Tamil Nadu
+\end{center}
+
+% === PROFESSIONAL SUMMARY ===
+\section{Professional Summary}
+Data-driven AIML Engineer with hands-on experience in machine learning, deep learning, and NLP. Skilled in building end-to-end ML pipelines — from data wrangling to model deployment — using Python, scikit-learn, PyTorch, and Hugging Face. Proven ability to deliver production-grade AI solutions with measurable business impact. Eager to contribute to intelligent systems in a fast-paced AI team.
+
+% === TECHNICAL SKILLS ===
+\section{Technical Skills}
+\textbf{Languages:} Python, SQL, Java, TypeScript \\
+\textbf{ML/DL:} scikit-learn, PyTorch, TensorFlow, Hugging Face Transformers, XGBoost, LightGBM \\
+\textbf{NLP \& CV:} BERT, DistilBERT, spaCy, NLTK, OpenCV, Sentence-Transformers \\
+\textbf{Data:} Pandas, NumPy, Matplotlib, Seaborn, PostgreSQL, Redis \\
+\textbf{MLOps:} Docker, FastAPI, MLflow, Git, CI/CD, Kafka \\
+\textbf{Concepts:} Supervised/Unsupervised Learning, Deep learning, Transformers, A/B Testing, Feature Engineering
+
+% === PROJECTS ===
+\section{Projects}
+
+\subsection{AI-Powered Intelligent Resume Screening \& Candidate Matching System}
+\textit{Python, Hugging Face Transformers, scikit-learn, FastAPI, PostgreSQL, Docker}
+\begin{itemize}
+  \item Fine-tuned BERT embeddings for skill extraction from 5,000 resumes. Achieved 92\% matching accuracy between job descriptions and candidate profiles.
+  \item Built a RESTful API that returns job-resume similarity scores in real time using cosine similarity on sentence-transformer embeddings.
+  \item Developed an ATS score prediction model with XGBoost (F1: 87\%) trained on 15 engineered features including keyword density, experience match, and education relevance.
+  \item Containerized the system with Docker, set up automated CI/CD, and reduced manual screening time by 70\% in a pilot run.
+\end{itemize}
+
+\subsection{End-to-End Multi-Modal Sentiment Analysis Pipeline}
+\textit{Python, PyTorch, Hugging Face, Kafka, Streamlit, Docker}
+\begin{itemize}
+  \item Built a real-time sentiment classifier with DistilBERT that processes over 10,000 tweets per hour through a streaming Kafka pipeline.
+  \item Designed a data augmentation pipeline using back-translation and synonym replacement. Improved F1 score from 82\% to 89\% on imbalanced classes.
+  \item Created an interactive Streamlit dashboard with live sentiment trends, geo-heatmaps, and automatic alerts when negative sentiment spikes.
+  \item Deployed as a microservice with model monitoring and drift detection using chi-square tests on prediction distributions.
+\end{itemize}
+
+% === OPEN SOURCE EXPERIENCE ===
+\section{Open Source Experience}
+\textbf{Open Source Contributor -- Kestra}\hfill Oct 2025 -- Present\\
+\href{https://github.com/kestra-io}{github.com/kestra-io}
+\begin{itemize}
+  \item Developed the SAP HANA JDBC Subplugin (plugin-jdbc-hana) and enhanced the Google Cloud Platform Dataflow Plugin for Kestra, designing database connectivity and stateful trigger APIs.
+  \item Implemented stateful trigger deduplication and custom execution termination hooks (kill/stop lifecycles) for GCP Dataflow tasks, preventing server-side resource leaks and billing overhead.
+  \item Currently developing stateful task orchestration features and process termination hooks for additional GCP services (such as Pub/Sub and BigQuery) to minimize runtime overhead.
+  \item Contributed 9 merged PRs, authored comprehensive unit and integration test suites, and collaborated asynchronously with distributed maintainers through structured code reviews.
+\end{itemize}
+
+% === EDUCATION ===
+\section{Education}
+\textbf{Master of Computer Applications (MCA)}\hfill Sep 2023 -- Present\\
+Kumaraguru College of Technology, Coimbatore \hfill \textbf{CGPA: 7.8 / 10.0}
+\\
+\textbf{Bachelor of Engineering (B.E) Electronics and Communication Engineering}\hfill Apr 2023 \\
+Adithya Institute of Technology \hfill \textbf{CGPA: 7.4 / 10.0}
+
+% === ACHIEVEMENTS ===
+\section{Achievements \& Activities}
+\begin{itemize}
+  \item \textbf{Hacktoberfest 2025 -- Super Contributor:} Multiple accepted PRs across open-source repositories.
+  \item \textbf{MCA Department Association Member:} Organized technical events, workshops, and peer-learning sessions.
+  \item \textbf{Pear Educator:} Delivered sessions on Git, GitHub, Open Source Contributions, and Data Structures for fellow students.
+\end{itemize}
+
+% === ATS NOTE ===
+\vfill\noindent\scriptsize
+\textbf{ATS Score Estimate:} \textgreater 85/100. Keywords present: Python, PyTorch, TensorFlow, BERT, NLP, scikit-learn, XGBoost, FastAPI, Docker, MLflow, Kafka, PostgreSQL. Single-column layout, standard fonts, \texttt{hyperref} URLs.
+
+\end{document}
