@@ -32,3 +32,14 @@ Thumbs.db
 .vscode/
 .idea/
 backend/.env
+
+# Test artifacts
+test-results/
+playwright-report/
+e2e/
+
+# Token blacklist
+backend/token_blacklist.json
+
+# Resumes
+*.tex
