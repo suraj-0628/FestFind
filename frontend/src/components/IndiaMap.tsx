@@ -574,9 +574,12 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
     const mk = L.marker([e.latitude, e.longitude], { icon: glowingMarker(st, 24) }).addTo(m);
     mk.bindPopup(eventPopup(e, st), { maxWidth: 300 });
     selectedMarkerRef.current = mk;
-    markerClickLockRef.current = true;
-    m.flyTo([e.latitude, e.longitude], Math.max(m.getZoom(), 11), { duration: 0.8 });
-    setTimeout(() => { markerClickLockRef.current = false; }, 1000);
+    const drill = drillRef.current;
+    if (drill !== "india") {
+      markerClickLockRef.current = true;
+      m.flyTo([e.latitude, e.longitude], Math.max(m.getZoom(), 11), { duration: 0.8 });
+      setTimeout(() => { markerClickLockRef.current = false; }, 1000);
+    }
   }, [selectedId]);
 
   useEffect(() => {
