@@ -273,7 +273,7 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
     return evtsRef.current.filter((e) => e.event_type === "physical" && pred(e));
   }, []);
 
-  const goIndia = useCallback(() => {
+  const goIndia = useCallback((fly = true) => {
     const m = map.current;
     if (!m) return;
     clearDyn();
@@ -312,18 +312,11 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
       userMarkerRef.current = um;
     }
 
-    const gen = ++generationRef.current;
-    const addLayer = () => {
-      if (gen !== generationRef.current) return;
-      moveEndCb.current = null;
-      layer.addTo(m);
-    };
-    moveEndCb.current = addLayer;
-    m.on("moveend", addLayer);
-    m.flyTo(indiaCenter, 5, { duration: 0.8 });
+    layer.addTo(m);
+    if (fly) m.flyTo(indiaCenter, 5, { duration: 0.8 });
   }, [clearDyn, phys]);
 
-  const goState = useCallback((state: StateData) => {
+  const goState = useCallback((state: StateData, fly = true) => {
     const m = map.current;
     if (!m) return;
     clearDyn();
@@ -379,24 +372,18 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
       bounds.push([userLocRef.current.lat, userLocRef.current.lng]);
     }
 
-    const gen = ++generationRef.current;
-    const addLayer = () => {
-      if (gen !== generationRef.current) return;
-      moveEndCb.current = null;
-      layer.addTo(m);
-    };
-    moveEndCb.current = addLayer;
-    m.on("moveend", addLayer);
-
-    if (bounds.length > 0) {
-      const b = L.latLngBounds(bounds);
-      m.fitBounds(b, { padding: [40, 40], maxZoom: 9, duration: 0.8 });
-    } else {
-      m.flyTo([state.lat, state.lng], 7, { duration: 0.8 });
+    layer.addTo(m);
+    if (fly) {
+      if (bounds.length > 0) {
+        const b = L.latLngBounds(bounds);
+        m.fitBounds(b, { padding: [40, 40], maxZoom: 9, duration: 0.8 });
+      } else {
+        m.flyTo([state.lat, state.lng], 7, { duration: 0.8 });
+      }
     }
   }, [clearDyn, phys]);
 
-  const goCity = useCallback((city: CityData, state: StateData, evts: EventData[]) => {
+  const goCity = useCallback((city: CityData, state: StateData, evts: EventData[], fly = true) => {
     const m = map.current;
     if (!m) return;
     clearDyn();
@@ -445,20 +432,14 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
       bounds.push([userLocRef.current.lat, userLocRef.current.lng]);
     }
 
-    const gen = ++generationRef.current;
-    const addLayer = () => {
-      if (gen !== generationRef.current) return;
-      moveEndCb.current = null;
-      layer.addTo(m);
-    };
-    moveEndCb.current = addLayer;
-    m.on("moveend", addLayer);
-
-    if (bounds.length > 0) {
-      const b = L.latLngBounds(bounds);
-      m.fitBounds(b, { padding: [50, 50], maxZoom: 14, duration: 0.8 });
-    } else {
-      m.flyTo([city.lat, city.lng], 12, { duration: 0.8 });
+    layer.addTo(m);
+    if (fly) {
+      if (bounds.length > 0) {
+        const b = L.latLngBounds(bounds);
+        m.fitBounds(b, { padding: [50, 50], maxZoom: 14, duration: 0.8 });
+      } else {
+        m.flyTo([city.lat, city.lng], 12, { duration: 0.8 });
+      }
     }
   }, [clearDyn]);
 
@@ -558,6 +539,17 @@ export function IndiaMap({ events, onSelect, selectedId, onMapMove, onMapIdle, u
       goStateRef.current(drillTargetRef.current.state);
     } else if (drill === "city" && drillTargetRef.current.city && drillTargetRef.current.state && drillTargetRef.current.evts) {
       goCityRef.current(drillTargetRef.current.city, drillTargetRef.current.state, drillTargetRef.current.evts);
+    }
+  }, []);
+
+  useEffect(() => {
+    const drill = drillRef.current;
+    if (drill === "india") {
+      goIndiaRef.current(false);
+    } else if (drill === "state" && drillTargetRef.current.state) {
+      goStateRef.current(drillTargetRef.current.state, false);
+    } else if (drill === "city" && drillTargetRef.current.city && drillTargetRef.current.state && drillTargetRef.current.evts) {
+      goCityRef.current(drillTargetRef.current.city, drillTargetRef.current.state, drillTargetRef.current.evts, false);
     }
   }, [events]);
 
